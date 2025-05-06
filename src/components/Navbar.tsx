@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Users, Calendar, MessageSquare, Settings } from 'lucide-react';
+import { Menu, X, Calendar, MessageSquare, Settings, Church } from 'lucide-react';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -14,8 +14,8 @@ const Navbar = () => {
     <nav className="bg-youth-blue text-white sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <Users size={28} />
-          <span className="text-xl font-bold">Youth Connect</span>
+          <Church size={28} />
+          <span className="text-xl font-bold">44 JNR Youth</span>
         </div>
 
         {/* Desktop Navigation */}
@@ -47,7 +47,7 @@ const Navbar = () => {
           <div className="container mx-auto px-4 py-3 flex flex-col space-y-3">
             <a href="#" className="block py-2 hover:bg-white/10 px-3 rounded-md">
               <div className="flex items-center space-x-3">
-                <Users size={20} />
+                <Church size={20} />
                 <span>Home</span>
               </div>
             </a>
