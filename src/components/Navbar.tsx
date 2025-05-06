@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Calendar, MessageSquare, Settings, Church } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -20,10 +21,10 @@ const Navbar = () => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex space-x-6">
-          <a href="#" className="hover:text-youth-light/80 transition-colors">Home</a>
+          <Link to="/" className="hover:text-youth-light/80 transition-colors">Home</Link>
           <a href="#events" className="hover:text-youth-light/80 transition-colors">Events</a>
           <a href="#forum" className="hover:text-youth-light/80 transition-colors">Forum</a>
-          <a href="#admin" className="hover:text-youth-light/80 transition-colors">Admin</a>
+          <Link to="/admin-login" className="hover:text-youth-light/80 transition-colors">Admin</Link>
         </div>
         
         <div className="hidden md:block">
@@ -45,12 +46,12 @@ const Navbar = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-youth-blue border-t border-white/20 animate-slide-in">
           <div className="container mx-auto px-4 py-3 flex flex-col space-y-3">
-            <a href="#" className="block py-2 hover:bg-white/10 px-3 rounded-md">
+            <Link to="/" className="block py-2 hover:bg-white/10 px-3 rounded-md">
               <div className="flex items-center space-x-3">
                 <Church size={20} />
                 <span>Home</span>
               </div>
-            </a>
+            </Link>
             <a href="#events" className="block py-2 hover:bg-white/10 px-3 rounded-md">
               <div className="flex items-center space-x-3">
                 <Calendar size={20} />
@@ -63,12 +64,12 @@ const Navbar = () => {
                 <span>Forum</span>
               </div>
             </a>
-            <a href="#admin" className="block py-2 hover:bg-white/10 px-3 rounded-md">
+            <Link to="/admin-login" className="block py-2 hover:bg-white/10 px-3 rounded-md">
               <div className="flex items-center space-x-3">
                 <Settings size={20} />
                 <span>Admin</span>
               </div>
-            </a>
+            </Link>
             <Button className="w-full bg-white text-youth-blue hover:bg-white/90">
               Sign In
             </Button>

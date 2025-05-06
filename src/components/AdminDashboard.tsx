@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserPlus, Calendar, Users, MessageSquare } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Textarea } from "@/components/ui/textarea";
 
 // Mock data for the charts
 const attendanceData = [
@@ -127,16 +130,14 @@ const AdminDashboard = () => {
         </Tabs>
 
         <div className="text-center mt-10">
-          <p className="text-sm text-gray-500 mb-2">Access restricted to administrators only.</p>
-          <Button className="bg-youth-blue hover:bg-youth-blue/90">Admin Login</Button>
+          <p className="text-sm text-gray-500 mb-2">Access the full admin dashboard for more features</p>
+          <Link to="/admin-login">
+            <Button className="bg-youth-blue hover:bg-youth-blue/90">Admin Login</Button>
+          </Link>
         </div>
       </div>
     </section>
   );
 };
-
-// Importing Button at the end to avoid issues with out-of-order imports
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 
 export default AdminDashboard;
