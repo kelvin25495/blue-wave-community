@@ -1,13 +1,13 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-// Get environment variables or use placeholder values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://your-supabase-project-url.supabase.co";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "your-anon-key";
+// Get environment variables or use provided values
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://yuqzcwmyuxbctrcjykln.supabase.co";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cXpjd215dXhiY3RyY2p5a2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3MDQ2MzgsImV4cCI6MjA2MjI4MDYzOH0.9VEiRv6cIURGHqen87iodh_50IEgTcsxhtbTPISoTwA";
 
-// Log a warning if environment variables are missing
+// Still log a warning if environment variables are missing
 if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-  console.error("Supabase URL or Anon Key is missing. Using placeholder values which won't work correctly. Please check your environment variables.");
+  console.log("Using directly provided Supabase credentials instead of environment variables.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
