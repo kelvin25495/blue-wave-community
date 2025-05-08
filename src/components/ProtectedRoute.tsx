@@ -1,6 +1,6 @@
 
 import { ReactNode, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,20 +12,23 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, isLoading, isAdmin } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      toast({
-        title: "Access denied",
-        description: "Please login to access this page",
-        variant: "destructive",
-      });
-    } else if (!isLoading && requireAdmin && !isAdmin) {
-      toast({
-        title: "Access denied",
-        description: "You need admin access to view this page",
-        variant: "destructive",
-      });
+    if (!isLoading) {
+      if (!user) {
+        toast({
+          title: "Access denied",
+          description: "Please login to access this page",
+          variant: "destructive",
+        });
+      } else if (requireAdmin && !isAdmin) {
+        toast({
+          title: "Access denied",
+          description: "You need admin access to view this page",
+          variant: "destructive",
+        });
+      }
     }
   }, [isLoading, user, requireAdmin, isAdmin, toast]);
 
@@ -34,7 +37,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   if (requireAdmin && !isAdmin) {

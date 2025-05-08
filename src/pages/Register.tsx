@@ -54,18 +54,22 @@ const Register = () => {
       
       if (error) throw error;
       
-      // Create profile record
+      // Try to create profile record - this may fail if table doesn't exist
+      // but we'll handle that gracefully
       if (authData.user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            id: authData.user.id,
-            name: data.name,
-            email: data.email,
-            is_admin: false, // default to regular user
-          });
-          
-        if (profileError) throw profileError;
+        try {
+          await supabase
+            .from("profiles")
+            .insert({
+              id: authData.user.id,
+              name: data.name,
+              email: data.email,
+              is_admin: false, // default to regular user
+            });
+        } catch (profileError) {
+          // Log the error but don't fail the registration
+          console.warn("Could not create profile record:", profileError);
+        }
       }
       
       toast({

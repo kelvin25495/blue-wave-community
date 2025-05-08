@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AdminDashboardContent from "@/components/AdminDashboard";
@@ -8,28 +8,15 @@ import { useToast } from "@/hooks/use-toast";
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signOut } = useAuth();
 
-  useEffect(() => {
-    // Check if user is authenticated
-    const isAuthenticated = localStorage.getItem("adminAuthenticated") === "true";
-    
-    if (!isAuthenticated) {
-      toast({
-        title: "Access denied",
-        description: "Please log in to access the admin dashboard",
-        variant: "destructive",
-      });
-      navigate("/admin-login");
-    }
-  }, [navigate, toast]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuthenticated");
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logged out successfully",
       description: "You have been logged out of the admin dashboard",
     });
-    navigate("/admin-login");
+    navigate("/login");
   };
 
   return (

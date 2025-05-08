@@ -31,21 +31,70 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/admin-login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
             {/* Protected Routes */}
-            <Route path="/sermons" element={<Sermons />} />
-            <Route path="/gallery" element={<PhotoGallery />} />
+            <Route 
+              path="/sermons" 
+              element={
+                <ProtectedRoute>
+                  <Sermons />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/gallery" 
+              element={
+                <ProtectedRoute>
+                  <PhotoGallery />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* Admin Routes */}
-            <Route path="/admin/sermons/add" element={<AddSermon />} />
-            <Route path="/admin/photos/add" element={<AddPhoto />} />
-            <Route path="/admin/contributions" element={<MemberContributions />} />
-            <Route path="/admin/contributions/report" element={<ContributionsReport />} />
+            <Route 
+              path="/admin/sermons/add" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AddSermon />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/photos/add" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <AddPhoto />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/contributions" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <MemberContributions />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/contributions/report" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <ContributionsReport />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
