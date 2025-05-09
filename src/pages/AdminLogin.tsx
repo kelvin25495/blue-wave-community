@@ -15,8 +15,11 @@ import { ADMIN_EMAIL } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(3, "Password must be at least 3 characters"),
 });
+
+// Fixed admin password
+const ADMIN_PASSWORD = "44123";
 
 const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -35,11 +38,22 @@ const AdminLogin = () => {
     setIsLoading(true);
     
     try {
-      // Admin login - check if email matches the admin email first
-      if (data.email !== ADMIN_EMAIL) {
+      // Check if password matches the fixed admin password
+      if (data.password !== ADMIN_PASSWORD) {
         toast({
           title: "Authentication failed",
           description: "Invalid admin credentials",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if email is the admin email
+      if (data.email !== ADMIN_EMAIL) {
+        toast({
+          title: "Authentication failed",
+          description: "Invalid admin email",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -52,7 +66,27 @@ const AdminLogin = () => {
         password: data.password,
       });
       
-      if (error) throw error;
+      if (error) {
+        // If error is because user doesn't exist, create account first
+        if (error.message.includes("Invalid login credentials")) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: data.email,
+            password: data.password,
+          });
+          
+          if (signUpError) throw signUpError;
+          
+          // Try login again
+          const { error: retryError } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+          });
+          
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       
       // If login successful, navigate to admin dashboard
       toast({
@@ -95,7 +129,7 @@ const AdminLogin = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="admin@example.com" type="email" disabled {...field} />
+                      <Input placeholder="admin@example.com" type="email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

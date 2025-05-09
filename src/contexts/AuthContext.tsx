@@ -1,11 +1,10 @@
-
 import { createContext, useState, useEffect, useContext, ReactNode } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Session, User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 
 // Define the admin email
-export const ADMIN_EMAIL = "admin2025@44.com";
+export const ADMIN_EMAIL = "25@admin.44";
 
 interface AuthContextType {
   session: Session | null;
