@@ -50,11 +50,6 @@ const Navbar = () => {
           )}
           <a href="#events" className="hover:text-youth-light/80 transition-colors">Events</a>
           <a href="#forum" className="hover:text-youth-light/80 transition-colors">Forum</a>
-          {isAdmin && (
-            <Link to="/admin" className="font-bold text-youth-light hover:text-youth-light/80 transition-colors">
-              Admin Dashboard
-            </Link>
-          )}
         </div>
         
         <div className="hidden md:flex space-x-2">
@@ -190,16 +185,6 @@ const Navbar = () => {
                   }}
                 >
                   Register
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start bg-transparent border-white text-white hover:bg-white hover:text-youth-blue"
-                  onClick={() => {
-                    navigate("/admin-login");
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Admin Login
                 </Button>
               </>
             )}

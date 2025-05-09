@@ -14,6 +14,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   const { toast } = useToast();
   const location = useLocation();
 
+  console.log("ProtectedRoute - User:", user?.email);
+  console.log("ProtectedRoute - IsLoading:", isLoading);
+  console.log("ProtectedRoute - IsAdmin:", isAdmin);
+  console.log("ProtectedRoute - RequireAdmin:", requireAdmin);
+
   useEffect(() => {
     if (!isLoading && !user) {
       toast({
@@ -30,11 +35,16 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     }
   }, [isLoading, user, requireAdmin, isAdmin, toast]);
 
-  // Show loading only briefly, then redirect if needed
+  // Show brief loading indicator, max 2 seconds to avoid endless loading
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-youth-blue"></div>
+      </div>
+    );
   }
 
+  // Not logged in - redirect to appropriate login page
   if (!user) {
     // Redirect to admin login if trying to access admin routes
     if (location.pathname.includes('/admin')) {
@@ -44,10 +54,12 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
+  // Check admin access
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
+  // All checks passed, render the protected content
   return <>{children}</>;
 };
 

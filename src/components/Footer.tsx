@@ -1,7 +1,10 @@
 
-import { Users } from 'lucide-react';
+import { Users, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
+  const currentYear = new Date().getFullYear();
+  
   return (
     <footer className="bg-youth-dark text-white">
       <div className="container mx-auto px-4 py-10">
@@ -36,11 +39,14 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Home</a></li>
+              <li><Link to="/" className="text-gray-300 hover:text-white transition-colors">Home</Link></li>
               <li><a href="#events" className="text-gray-300 hover:text-white transition-colors">Events</a></li>
               <li><a href="#forum" className="text-gray-300 hover:text-white transition-colors">Forum</a></li>
-              <li><a href="#admin" className="text-gray-300 hover:text-white transition-colors">Admin</a></li>
-              <li><a href="#" className="text-gray-300 hover:text-white transition-colors">About Us</a></li>
+              <li><Link to="/admin-login" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                <Settings size={16} className="mr-1" />
+                <span>Admin Login</span>
+              </Link></li>
+              <li><Link to="/about" className="text-gray-300 hover:text-white transition-colors">About Us</Link></li>
             </ul>
           </div>
           
@@ -54,7 +60,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
-          <p>&copy; {new Date().getFullYear()} Youth Connect. All rights reserved.</p>
+          <p>&copy; {currentYear} Youth Connect. All rights reserved.</p>
         </div>
       </div>
     </footer>
