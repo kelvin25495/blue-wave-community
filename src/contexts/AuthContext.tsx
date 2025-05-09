@@ -4,6 +4,9 @@ import { supabase } from "@/lib/supabaseClient";
 import { Session, User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 
+// Define the admin email
+export const ADMIN_EMAIL = "admin2025@44.com";
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -30,19 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(data.session);
           setUser(data.session.user);
           
-          // Check if user is admin
-          try {
-            const { data: profileData } = await supabase
-              .from("profiles")
-              .select("is_admin")
-              .eq("id", data.session.user.id)
-              .single();
-              
-            setIsAdmin(profileData?.is_admin || false);
-          } catch (profileError) {
-            // If profiles table doesn't exist or there's an error, default to non-admin
-            console.warn("Could not fetch admin status:", profileError);
-            setIsAdmin(false);
+          // Check if user is admin (either by email or by profile)
+          if (data.session.user.email === ADMIN_EMAIL) {
+            setIsAdmin(true);
+          } else {
+            try {
+              const { data: profileData } = await supabase
+                .from("profiles")
+                .select("is_admin")
+                .eq("id", data.session.user.id)
+                .single();
+                
+              setIsAdmin(profileData?.is_admin || false);
+            } catch (profileError) {
+              console.warn("Could not fetch admin status:", profileError);
+              setIsAdmin(false);
+            }
           }
         }
       } catch (error) {
@@ -61,17 +67,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         
         if (newSession?.user) {
-          try {
-            const { data: profileData } = await supabase
-              .from("profiles")
-              .select("is_admin")
-              .eq("id", newSession.user.id)
-              .single();
-              
-            setIsAdmin(profileData?.is_admin || false);
-          } catch (profileError) {
-            console.warn("Could not fetch admin status on auth change:", profileError);
-            setIsAdmin(false);
+          // Check if user is admin (either by email or by profile)
+          if (newSession.user.email === ADMIN_EMAIL) {
+            setIsAdmin(true);
+          } else {
+            try {
+              const { data: profileData } = await supabase
+                .from("profiles")
+                .select("is_admin")
+                .eq("id", newSession.user.id)
+                .single();
+                
+              setIsAdmin(profileData?.is_admin || false);
+            } catch (profileError) {
+              console.warn("Could not fetch admin status on auth change:", profileError);
+              setIsAdmin(false);
+            }
           }
         } else {
           setIsAdmin(false);

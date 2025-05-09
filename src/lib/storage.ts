@@ -12,9 +12,13 @@ export async function ensureStorageBuckets() {
   ];
 
   try {
+    console.log("Starting to create storage buckets...");
     // Get existing buckets
     const { data: existingBuckets, error } = await supabase.storage.listBuckets();
-    if (error) throw error;
+    if (error) {
+      console.error("Error listing buckets:", error);
+      throw error;
+    }
 
     // Create any missing buckets
     for (const bucketName of requiredBuckets) {
@@ -29,7 +33,11 @@ export async function ensureStorageBuckets() {
         
         if (createError) {
           console.error(`Error creating ${bucketName} bucket:`, createError);
+        } else {
+          console.log(`Successfully created ${bucketName} bucket`);
         }
+      } else {
+        console.log(`Bucket ${bucketName} already exists`);
       }
     }
     

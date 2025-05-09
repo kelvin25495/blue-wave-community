@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Calendar, MessageSquare, Settings, Church, Book, Image, Users, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -25,6 +25,12 @@ const Navbar = () => {
     navigate("/");
   };
 
+  // We'll add a console log to help debug
+  useEffect(() => {
+    console.log("Navbar render - User:", user?.email);
+    console.log("Navbar render - Is Admin:", isAdmin);
+  }, [user, isAdmin]);
+
   return (
     <nav className="bg-youth-blue text-white sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -45,20 +51,34 @@ const Navbar = () => {
           <a href="#events" className="hover:text-youth-light/80 transition-colors">Events</a>
           <a href="#forum" className="hover:text-youth-light/80 transition-colors">Forum</a>
           {isAdmin && (
-            <Link to="/admin" className="hover:text-youth-light/80 transition-colors">Admin</Link>
+            <Link to="/admin" className="font-bold text-youth-light hover:text-youth-light/80 transition-colors">
+              Admin Dashboard
+            </Link>
           )}
         </div>
         
         <div className="hidden md:flex space-x-2">
           {user ? (
-            <Button 
-              variant="outline" 
-              className="bg-transparent border-white hover:bg-white hover:text-youth-blue"
-              onClick={handleSignOut}
-            >
-              <LogOut size={16} className="mr-2" />
-              Sign Out
-            </Button>
+            <>
+              {isAdmin && (
+                <Button 
+                  variant="outline" 
+                  className="bg-transparent border-white hover:bg-white hover:text-youth-blue"
+                  onClick={() => navigate("/admin")}
+                >
+                  <Settings size={16} className="mr-2" />
+                  Admin
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                className="bg-transparent border-white hover:bg-white hover:text-youth-blue"
+                onClick={handleSignOut}
+              >
+                <LogOut size={16} className="mr-2" />
+                Sign Out
+              </Button>
+            </>
           ) : (
             <>
               <Button 
@@ -131,10 +151,10 @@ const Navbar = () => {
             </a>
             
             {isAdmin && (
-              <Link to="/admin" className="block py-2 hover:bg-white/10 px-3 rounded-md" onClick={() => setIsMenuOpen(false)}>
+              <Link to="/admin" className="block py-2 hover:bg-white/10 px-3 rounded-md bg-white/10" onClick={() => setIsMenuOpen(false)}>
                 <div className="flex items-center space-x-3">
                   <Settings size={20} />
-                  <span>Admin</span>
+                  <span className="font-bold">Admin Dashboard</span>
                 </div>
               </Link>
             )}
@@ -170,6 +190,16 @@ const Navbar = () => {
                   }}
                 >
                   Register
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start bg-transparent border-white text-white hover:bg-white hover:text-youth-blue"
+                  onClick={() => {
+                    navigate("/admin-login");
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Admin Login
                 </Button>
               </>
             )}

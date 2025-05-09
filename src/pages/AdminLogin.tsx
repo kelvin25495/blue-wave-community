@@ -11,9 +11,7 @@ import { Church, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-
-// Admin credentials - you can change these in your Supabase database
-const ADMIN_EMAIL = "admin2025@44.com";
+import { ADMIN_EMAIL } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -28,7 +26,7 @@ const AdminLogin = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      email: ADMIN_EMAIL,
       password: "",
     },
   });
@@ -56,18 +54,7 @@ const AdminLogin = () => {
       
       if (error) throw error;
       
-      // Check if user is admin in the profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", authData.user.id)
-        .single();
-        
-      if (profileError || !profileData?.is_admin) {
-        await supabase.auth.signOut(); // Sign out if not admin
-        throw new Error("You do not have admin privileges");
-      }
-      
+      // If login successful, navigate to admin dashboard
       toast({
         title: "Login successful",
         description: "Welcome to the admin dashboard",
@@ -108,7 +95,7 @@ const AdminLogin = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="admin@example.com" type="email" {...field} />
+                      <Input placeholder="admin@example.com" type="email" disabled {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,23 +15,22 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   const location = useLocation();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        toast({
-          title: "Access denied",
-          description: "Please login to access this page",
-          variant: "destructive",
-        });
-      } else if (requireAdmin && !isAdmin) {
-        toast({
-          title: "Access denied",
-          description: "You need admin access to view this page",
-          variant: "destructive",
-        });
-      }
+    if (!isLoading && !user) {
+      toast({
+        title: "Access denied",
+        description: "Please login to access this page",
+        variant: "destructive",
+      });
+    } else if (!isLoading && requireAdmin && !isAdmin) {
+      toast({
+        title: "Access denied",
+        description: "You need admin access to view this page",
+        variant: "destructive",
+      });
     }
   }, [isLoading, user, requireAdmin, isAdmin, toast]);
 
+  // Show loading only briefly, then redirect if needed
   if (isLoading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
