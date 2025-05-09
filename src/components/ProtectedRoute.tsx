@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +36,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   }
 
   if (!user) {
+    // Redirect to admin login if trying to access admin routes
+    if (location.pathname.includes('/admin')) {
+      return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
+    }
+    // Otherwise redirect to regular login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 

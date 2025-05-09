@@ -7,48 +7,83 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
-import { Church } from "lucide-react";
+import { Church, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-// Hardcoded credentials - in a real app you would use a secure backend
+// Admin credentials - you can change these in your Supabase database
 const ADMIN_EMAIL = "admin2025@44.com";
-const ADMIN_PASSWORD = "44123";
+
+const formSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const form = useForm({
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const onSubmit = (data: { email: string; password: string }) => {
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     
-    // Simulate network request
-    setTimeout(() => {
-      if (data.email === ADMIN_EMAIL && data.password === ADMIN_PASSWORD) {
-        // Set authentication status in localStorage
-        localStorage.setItem("adminAuthenticated", "true");
-        
-        toast({
-          title: "Login successful",
-          description: "Welcome to the admin dashboard",
-        });
-        
-        navigate("/admin");
-      } else {
+    try {
+      // Admin login - check if email matches the admin email first
+      if (data.email !== ADMIN_EMAIL) {
         toast({
           title: "Authentication failed",
-          description: "Invalid email or password",
+          description: "Invalid admin credentials",
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
       }
+      
+      // Try to sign in with Supabase
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      
+      if (error) throw error;
+      
+      // Check if user is admin in the profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", authData.user.id)
+        .single();
+        
+      if (profileError || !profileData?.is_admin) {
+        await supabase.auth.signOut(); // Sign out if not admin
+        throw new Error("You do not have admin privileges");
+      }
+      
+      toast({
+        title: "Login successful",
+        description: "Welcome to the admin dashboard",
+      });
+      
+      navigate("/admin");
+    } catch (error: any) {
+      console.error("Admin login error:", error);
+      toast({
+        title: "Authentication failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -99,7 +134,14 @@ const AdminLogin = () => {
                 className="w-full bg-youth-blue hover:bg-youth-blue/90"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign in"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in"
+                )}
               </Button>
             </form>
           </Form>
