@@ -13,7 +13,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Settings, Key, User } from "lucide-react";
+import { Loader2, Key, User } from "lucide-react";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(3, "Password must be at least 3 characters"),
@@ -127,22 +135,22 @@ const AdminDashboard = () => {
                 <CardContent>
                   {loginHistory.length > 0 ? (
                     <div className="border rounded-md">
-                      <table className="w-full">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th className="text-left p-3">Login Time</th>
-                            <th className="text-left p-3">Email</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Login Time</TableHead>
+                            <TableHead>Email</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {loginHistory.map((login, index) => (
-                            <tr key={index} className="border-t">
-                              <td className="p-3">{new Date(login.timestamp).toLocaleString()}</td>
-                              <td className="p-3">{login.email}</td>
-                            </tr>
+                            <TableRow key={index}>
+                              <TableCell>{new Date(login.timestamp).toLocaleString()}</TableCell>
+                              <TableCell>{login.email}</TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   ) : (
                     <p>No login history available</p>
