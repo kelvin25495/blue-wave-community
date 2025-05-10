@@ -36,7 +36,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     }
   }, [isLoading, user, requireAdmin, isAdmin, adminSession, toast, location.pathname]);
 
-  // Show brief loading indicator, max 2 seconds to avoid endless loading
+  // Limit loading indicator to 2 seconds maximum
+  // The loading indicator displayed should be very brief
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">

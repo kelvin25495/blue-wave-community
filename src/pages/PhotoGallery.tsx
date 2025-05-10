@@ -66,7 +66,9 @@ const PhotoGallery = () => {
         
       if (error) throw error;
       
+      // Always set photos to an array (empty if no data)
       setPhotos(data || []);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching photos:", error);
       toast({
@@ -74,7 +76,7 @@ const PhotoGallery = () => {
         description: "Failed to load photo gallery",
         variant: "destructive",
       });
-    } finally {
+      // Even if there's an error, we want to stop loading
       setIsLoading(false);
     }
   };
@@ -105,12 +107,8 @@ const PhotoGallery = () => {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white rounded-lg shadow-md aspect-square animate-pulse">
-                  <div className="h-full bg-gray-200 rounded-md"></div>
-                </div>
-              ))}
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-youth-blue"></div>
             </div>
           ) : photos.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -121,6 +119,15 @@ const PhotoGallery = () => {
           ) : (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No photos available yet</p>
+              {isAdmin && (
+                <Button 
+                  onClick={() => navigate("/admin/photos/add")} 
+                  className="bg-youth-blue hover:bg-youth-blue/90 mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Photo
+                </Button>
+              )}
             </div>
           )}
         </div>

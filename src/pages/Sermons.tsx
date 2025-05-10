@@ -67,7 +67,9 @@ const Sermons = () => {
         
       if (error) throw error;
       
+      // Always set sermons to an array (empty if no data)
       setSermons(data || []);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching sermons:", error);
       toast({
@@ -75,7 +77,7 @@ const Sermons = () => {
         description: "Failed to load sermons",
         variant: "destructive",
       });
-    } finally {
+      // Even if there's an error, we want to stop loading
       setIsLoading(false);
     }
   };
@@ -106,14 +108,8 @@ const Sermons = () => {
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-lg shadow-md p-6 h-64 animate-pulse">
-                  <div className="h-32 bg-gray-200 rounded-md mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              ))}
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-youth-blue"></div>
             </div>
           ) : sermons.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -124,6 +120,15 @@ const Sermons = () => {
           ) : (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No sermons available yet</p>
+              {isAdmin && (
+                <Button 
+                  onClick={() => navigate("/admin/sermons/add")} 
+                  className="bg-youth-blue hover:bg-youth-blue/90 mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Sermon
+                </Button>
+              )}
             </div>
           )}
         </div>

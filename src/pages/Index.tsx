@@ -1,7 +1,7 @@
+
 import Navbar from '@/components/Navbar';
 import Hero3DSlider from '@/components/Hero3DSlider';
 import EventsSection from '@/components/EventsSection';
-import ForumSection from '@/components/ForumSection';
 import Footer from '@/components/Footer';
 
 const Index = () => {
@@ -53,7 +53,6 @@ const Index = () => {
         </section>
         
         <EventsSection />
-        <ForumSection />
       </main>
       <Footer />
     </div>
