@@ -1,4 +1,5 @@
-import { ReactNode, useEffect } from "react";
+
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   const { user, isLoading, isAdmin, adminSession } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  // Add a timeout state to limit loading time
+  const [timeoutReached, setTimeoutReached] = useState(false);
 
   console.log("ProtectedRoute - User:", user?.email);
   console.log("ProtectedRoute - IsLoading:", isLoading);
@@ -35,9 +38,20 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     }
   }, [isLoading, user, requireAdmin, isAdmin, adminSession, toast, location.pathname]);
 
-  // Limit loading indicator to 2 seconds maximum
-  // The loading indicator displayed should be very brief
-  if (isLoading) {
+  // Set a timeout to avoid infinite loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        setTimeoutReached(true);
+        console.log("Loading timeout reached");
+      }
+    }, 3000); // 3 seconds timeout
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  // Show loading state but limit it to avoid infinite spinner
+  if (isLoading && !timeoutReached) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-youth-blue"></div>
@@ -47,6 +61,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
 
   // For admin routes, check if admin is logged in via adminSession
   if (requireAdmin) {
+    // If loading timeout reached but we have adminSession, allow access
+    if (timeoutReached && adminSession) {
+      return <>{children}</>;
+    }
+    
     if (!isAdmin && !adminSession) {
       return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
     }
