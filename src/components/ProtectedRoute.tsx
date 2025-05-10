@@ -21,20 +21,20 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   console.log("ProtectedRoute - AdminSession:", adminSession);
 
   useEffect(() => {
-    if (!isLoading && !user && !adminSession) {
+    if (!isLoading && !user && !adminSession && !location.pathname.includes('/admin')) {
       toast({
         title: "Access denied",
         description: "Please login to access this page",
         variant: "destructive",
       });
-    } else if (!isLoading && requireAdmin && !isAdmin) {
+    } else if (!isLoading && requireAdmin && !isAdmin && !adminSession) {
       toast({
         title: "Access denied",
         description: "You need admin access to view this page",
         variant: "destructive",
       });
     }
-  }, [isLoading, user, requireAdmin, isAdmin, adminSession, toast]);
+  }, [isLoading, user, requireAdmin, isAdmin, adminSession, toast, location.pathname]);
 
   // Show brief loading indicator, max 2 seconds to avoid endless loading
   if (isLoading) {

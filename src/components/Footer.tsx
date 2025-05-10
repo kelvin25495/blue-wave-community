@@ -37,20 +37,20 @@ const Footer = () => {
               <li>
                 <a href="#forum" className="text-sm hover:underline">Forum</a>
               </li>
-              <li>
-                <Link to="/admin-login" className="text-sm hover:underline font-semibold">Admin Access</Link>
-              </li>
             </ul>
           </div>
           
           <div>
             <h4 className="text-md font-bold mb-4">Contact Us</h4>
-            <address className="not-italic">
+            <address className="not-italic mb-4">
               <p className="text-sm mb-1">123 Faith Street</p>
               <p className="text-sm mb-1">Nairobi, Kenya</p>
               <p className="text-sm mb-1">Email: info@44jnryouth.org</p>
               <p className="text-sm">Phone: +254 700 000000</p>
             </address>
+            <Link to="/admin-login" className="text-sm font-semibold bg-white bg-opacity-20 px-3 py-1 rounded hover:bg-opacity-30 inline-flex items-center">
+              Admin Access
+            </Link>
           </div>
         </div>
         
