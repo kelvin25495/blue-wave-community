@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import AdminDashboardContent from "@/components/AdminDashboard";
 import { useToast } from "@/hooks/use-toast";
@@ -9,34 +9,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { supabase } from "@/lib/supabaseClient";
 import { Loader2, Settings, Key, User } from "lucide-react";
 
 const passwordSchema = z.object({
-  currentPassword: z.string().min(6, "Password must be at least 6 characters"),
-  newPassword: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  currentPassword: z.string().min(3, "Password must be at least 3 characters"),
+  newPassword: z.string().min(3, "Password must be at least 3 characters"),
+  confirmPassword: z.string().min(3, "Password must be at least 3 characters"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-const emailSchema = z.object({
-  newEmail: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const { user, signOut, adminSession } = useAuth();
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [loginHistory, setLoginHistory] = useState<any[]>([]);
 
   const passwordForm = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
@@ -47,13 +40,15 @@ const AdminDashboard = () => {
     },
   });
 
-  const emailForm = useForm<z.infer<typeof emailSchema>>({
-    resolver: zodResolver(emailSchema),
-    defaultValues: {
-      newEmail: user?.email || "",
-      password: "",
-    },
-  });
+  useEffect(() => {
+    // Load admin login history
+    try {
+      const history = JSON.parse(localStorage.getItem("adminLoginHistory") || "[]");
+      setLoginHistory(history);
+    } catch (error) {
+      console.error("Error loading login history:", error);
+    }
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -68,20 +63,14 @@ const AdminDashboard = () => {
     setIsPasswordLoading(true);
     
     try {
-      // First verify the current password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || "",
-        password: data.currentPassword,
-      });
+      // In a real system, we'd update the password in the backend
+      // For this custom JS auth system, we'll simulate it
+      if (data.currentPassword !== "44123") {
+        throw new Error("Current password is incorrect");
+      }
       
-      if (signInError) throw new Error("Current password is incorrect");
-      
-      // Update password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.newPassword,
-      });
-      
-      if (updateError) throw updateError;
+      // Update the password in localStorage
+      localStorage.setItem("adminPassword", data.newPassword);
       
       toast({
         title: "Password updated",
@@ -101,44 +90,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const onChangeEmail = async (data: z.infer<typeof emailSchema>) => {
-    setIsEmailLoading(true);
-    
-    try {
-      // First verify the password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || "",
-        password: data.password,
-      });
-      
-      if (signInError) throw new Error("Password is incorrect");
-      
-      // Update email
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: data.newEmail,
-      });
-      
-      if (updateError) throw updateError;
-      
-      toast({
-        title: "Email updated",
-        description: "Your email has been changed successfully. Please check your new email for verification.",
-      });
-      
-      emailForm.reset();
-      emailForm.setValue("newEmail", data.newEmail);
-    } catch (error: any) {
-      console.error("Change email error:", error);
-      toast({
-        title: "Email change failed",
-        description: error.message || "Failed to update email",
-        variant: "destructive",
-      });
-    } finally {
-      setIsEmailLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -155,14 +106,49 @@ const AdminDashboard = () => {
           </div>
           
           <Tabs defaultValue="dashboard" className="w-full mb-8">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="password">Change Password</TabsTrigger>
-              <TabsTrigger value="account">Account Settings</TabsTrigger>
             </TabsList>
             
             <TabsContent value="dashboard">
               <AdminDashboardContent />
+              
+              <Card className="mt-6">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Key className="w-5 h-5 text-youth-blue" />
+                    <CardTitle>Admin Login History</CardTitle>
+                  </div>
+                  <CardDescription>
+                    History of admin login sessions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loginHistory.length > 0 ? (
+                    <div className="border rounded-md">
+                      <table className="w-full">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="text-left p-3">Login Time</th>
+                            <th className="text-left p-3">Email</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {loginHistory.map((login, index) => (
+                            <tr key={index} className="border-t">
+                              <td className="p-3">{new Date(login.timestamp).toLocaleString()}</td>
+                              <td className="p-3">{login.email}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p>No login history available</p>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
             
             <TabsContent value="password">
@@ -233,68 +219,6 @@ const AdminDashboard = () => {
                           </>
                         ) : (
                           "Update Password"
-                        )}
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="account">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <User className="w-5 h-5 text-youth-blue" />
-                    <CardTitle>Change Email</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Update your admin email. You will need to verify your new email address.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...emailForm}>
-                    <form onSubmit={emailForm.handleSubmit(onChangeEmail)} className="space-y-4">
-                      <FormField
-                        control={emailForm.control}
-                        name="newEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>New Email</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="admin@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={emailForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Confirm with Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-youth-blue hover:bg-youth-blue/90"
-                        disabled={isEmailLoading}
-                      >
-                        {isEmailLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          "Update Email"
                         )}
                       </Button>
                     </form>

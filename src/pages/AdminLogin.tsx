@@ -8,28 +8,29 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { Church, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ADMIN_EMAIL } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(3, "Password must be at least 3 characters"),
 });
 
-// Fixed admin password
+// Fixed admin credentials
+const ADMIN_EMAIL = "4425@admin.com";
 const ADMIN_PASSWORD = "44123";
 
 const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setAdminSession } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: ADMIN_EMAIL,
+      email: "",
       password: "",
     },
   });
@@ -38,8 +39,8 @@ const AdminLogin = () => {
     setIsLoading(true);
     
     try {
-      // Check if password matches the fixed admin password
-      if (data.password !== ADMIN_PASSWORD) {
+      // Check if email and password match the fixed admin credentials
+      if (data.email !== ADMIN_EMAIL || data.password !== ADMIN_PASSWORD) {
         toast({
           title: "Authentication failed",
           description: "Invalid admin credentials",
@@ -49,46 +50,28 @@ const AdminLogin = () => {
         return;
       }
       
-      // Check if email is the admin email
-      if (data.email !== ADMIN_EMAIL) {
-        toast({
-          title: "Authentication failed",
-          description: "Invalid admin email",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
+      // Create admin session
+      const adminSession = {
+        id: "admin-session",
+        email: ADMIN_EMAIL,
+        created_at: new Date().toISOString(),
+      };
       
-      // Try to sign in with Supabase
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+      // Store in localStorage
+      localStorage.setItem("adminSession", JSON.stringify(adminSession));
+      
+      // Set admin session in auth context
+      setAdminSession(adminSession);
+      
+      // Log login time
+      const loginTime = new Date().toISOString();
+      const loginHistory = JSON.parse(localStorage.getItem("adminLoginHistory") || "[]");
+      loginHistory.push({
+        timestamp: loginTime,
+        email: ADMIN_EMAIL
       });
+      localStorage.setItem("adminLoginHistory", JSON.stringify(loginHistory));
       
-      if (error) {
-        // If error is because user doesn't exist, create account first
-        if (error.message.includes("Invalid login credentials")) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: data.email,
-            password: data.password,
-          });
-          
-          if (signUpError) throw signUpError;
-          
-          // Try login again
-          const { error: retryError } = await supabase.auth.signInWithPassword({
-            email: data.email,
-            password: data.password,
-          });
-          
-          if (retryError) throw retryError;
-        } else {
-          throw error;
-        }
-      }
-      
-      // If login successful, navigate to admin dashboard
       toast({
         title: "Login successful",
         description: "Welcome to the admin dashboard",
@@ -99,7 +82,7 @@ const AdminLogin = () => {
       console.error("Admin login error:", error);
       toast({
         title: "Authentication failed",
-        description: error.message || "Invalid email or password",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {

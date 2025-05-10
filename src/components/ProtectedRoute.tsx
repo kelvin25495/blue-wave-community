@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
-  const { user, isLoading, isAdmin } = useAuth();
+  const { user, isLoading, isAdmin, adminSession } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
 
@@ -18,9 +18,10 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   console.log("ProtectedRoute - IsLoading:", isLoading);
   console.log("ProtectedRoute - IsAdmin:", isAdmin);
   console.log("ProtectedRoute - RequireAdmin:", requireAdmin);
+  console.log("ProtectedRoute - AdminSession:", adminSession);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !adminSession) {
       toast({
         title: "Access denied",
         description: "Please login to access this page",
@@ -33,7 +34,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
         variant: "destructive",
       });
     }
-  }, [isLoading, user, requireAdmin, isAdmin, toast]);
+  }, [isLoading, user, requireAdmin, isAdmin, adminSession, toast]);
 
   // Show brief loading indicator, max 2 seconds to avoid endless loading
   if (isLoading) {
@@ -44,19 +45,22 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
-  // Not logged in - redirect to appropriate login page
-  if (!user) {
+  // For admin routes, check if admin is logged in via adminSession
+  if (requireAdmin) {
+    if (!isAdmin && !adminSession) {
+      return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // For regular protected routes
+  if (!user && !adminSession) {
     // Redirect to admin login if trying to access admin routes
     if (location.pathname.includes('/admin')) {
       return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
     }
     // Otherwise redirect to regular login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  }
-
-  // Check admin access
-  if (requireAdmin && !isAdmin) {
-    return <Navigate to="/" replace />;
   }
 
   // All checks passed, render the protected content
