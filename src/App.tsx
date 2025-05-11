@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MemberContributions from "./pages/MemberContributions";
 import ContributionsReport from "./pages/ContributionsReport";
+import AdminEvents from "./pages/AdminEvents";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -100,6 +101,14 @@ const App = () => {
                 element={
                   <ProtectedRoute requireAdmin={true}>
                     <ContributionsReport />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/events" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <AdminEvents />
                   </ProtectedRoute>
                 } 
               />

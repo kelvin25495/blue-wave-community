@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +12,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   const { user, isLoading, isAdmin, adminSession } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
-  // Add a timeout state to limit loading time
   const [timeoutReached, setTimeoutReached] = useState(false);
 
   console.log("ProtectedRoute - User:", user?.email);
@@ -59,20 +57,18 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
-  // For admin routes, check if admin is logged in via adminSession
+  // For admin routes, strictly check if there's an admin session
   if (requireAdmin) {
-    // If loading timeout reached but we have adminSession, allow access
-    if (timeoutReached && adminSession) {
-      return <>{children}</>;
-    }
-    
-    if (!isAdmin && !adminSession) {
+    // If there's no admin session, redirect to admin login
+    if (!adminSession) {
       return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
     }
+    
+    // For admin routes, only allow access with admin session
     return <>{children}</>;
   }
 
-  // For regular protected routes
+  // For regular protected routes (non-admin)
   if (!user && !adminSession) {
     // Redirect to admin login if trying to access admin routes
     if (location.pathname.includes('/admin')) {
