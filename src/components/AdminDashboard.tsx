@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { FileText, Image, Users, FileSpreadsheet, Calendar } from "lucide-react";
+import { FileText, Image, Users, FileSpreadsheet, Calendar, CreditCard } from "lucide-react";
 
 const AdminDashboard = () => {
   return (
@@ -45,7 +45,7 @@ const AdminDashboard = () => {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Contributions</CardTitle>
-                  <FileSpreadsheet className="h-5 w-5 text-youth-blue" />
+                  <CreditCard className="h-5 w-5 text-youth-blue" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -68,7 +68,7 @@ const AdminDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/admin">
+          <Link to="/admin/members">
             <Card className="card-hover cursor-pointer h-full transition-all hover:shadow-md">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">

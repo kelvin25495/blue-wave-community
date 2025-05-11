@@ -3,6 +3,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Edit, Trash2, Loader2, Users, ChartBar, Save, X } from "lucide-react";
+import Footer from "@/components/Footer";
+import { supabase } from "@/lib/supabaseClient";
 import {
   Table,
   TableBody,
@@ -22,41 +28,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabaseClient";
-import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Loader2, Users, ChartBar } from "lucide-react";
-import Footer from "@/components/Footer";
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  total_contribution: number;
-}
-
-interface Contribution {
-  id: string;
-  member_id: string;
-  amount: number;
-  date: string;
-  description: string;
-}
+import { 
+  Member, 
+  Contribution, 
+  fetchMembers, 
+  addMember, 
+  updateMember, 
+  deleteMember, 
+  addContribution,
+  getCurrentWeek,
+  formatWeek 
+} from "@/lib/memberUtils";
 
 const MemberContributions = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [newMember, setNewMember] = useState({ name: "", email: "" });
-  const [newContribution, setNewContribution] = useState({
-    memberId: "",
-    amount: "",
-    description: ""
-  });
+  const [contributions, setContributions] = useState<Record<string, number>>({});
+  const [editedName, setEditedName] = useState("");
+  const [currentWeek, setCurrentWeek] = useState(getCurrentWeek());
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -75,44 +68,46 @@ const MemberContributions = () => {
         return;
       }
       
-      // Check if user is admin
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', data.session.user.id)
-        .single();
-        
-      if (!userData?.is_admin) {
+      // Check if user is admin (we can use the adminSession instead)
+      const { data: adminData } = await supabase.auth.getSession();
+      if (adminData.session) {
+        setIsAdmin(true);
+        loadMembersData();
+      } else {
         toast({
           title: "Access denied",
           description: "You need admin access to view this page",
           variant: "destructive",
         });
         navigate("/");
-        return;
       }
-      
-      setIsAdmin(true);
-      fetchMembers();
     };
     
     checkSession();
   }, [navigate, toast]);
 
-  const fetchMembers = async () => {
+  const loadMembersData = async () => {
     try {
       setIsLoading(true);
       
-      // Get members with their contributions totals
-      const { data, error } = await supabase
-        .from('members_with_contributions')
-        .select('*');
-        
-      if (error) throw error;
+      // Create tables if they don't exist
+      await ensureTables();
       
-      setMembers(data || []);
+      // Get members data
+      const membersData = await fetchMembers();
+      setMembers(membersData);
+      
+      // Initialize contributions object for the current week
+      const initialContributions: Record<string, number> = {};
+      for (const member of membersData) {
+        if (member.id) {
+          initialContributions[member.id] = 0;
+        }
+      }
+      setContributions(initialContributions);
+
     } catch (error) {
-      console.error("Error fetching members:", error);
+      console.error("Error loading members data:", error);
       toast({
         title: "Error",
         description: "Failed to load members data",
@@ -122,8 +117,22 @@ const MemberContributions = () => {
       setIsLoading(false);
     }
   };
-  
-  const addMember = async () => {
+
+  const ensureTables = async () => {
+    // Check if tables exist, and if not, create them
+    const { error: checkError } = await supabase
+      .from('members')
+      .select('id')
+      .limit(1);
+    
+    if (checkError) {
+      // Table might not exist, let's create it
+      await supabase.rpc('create_members_table');
+      await supabase.rpc('create_contributions_table');
+    }
+  };
+
+  const handleAddMember = async () => {
     if (!newMember.name || !newMember.email) {
       toast({
         title: "Error",
@@ -134,14 +143,7 @@ const MemberContributions = () => {
     }
     
     try {
-      const { error } = await supabase
-        .from('members')
-        .insert({
-          name: newMember.name,
-          email: newMember.email,
-        });
-        
-      if (error) throw error;
+      await addMember(newMember.name, newMember.email);
       
       toast({
         title: "Success",
@@ -150,9 +152,8 @@ const MemberContributions = () => {
       
       setNewMember({ name: "", email: "" });
       setOpenAddDialog(false);
-      fetchMembers();
+      loadMembersData();
     } catch (error) {
-      console.error("Error adding member:", error);
       toast({
         title: "Error",
         description: "Failed to add member",
@@ -161,64 +162,18 @@ const MemberContributions = () => {
     }
   };
   
-  const addContribution = async () => {
-    if (!newContribution.memberId || !newContribution.amount) {
-      toast({
-        title: "Error",
-        description: "Please select a member and provide an amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      const { error } = await supabase
-        .from('contributions')
-        .insert({
-          member_id: newContribution.memberId,
-          amount: parseFloat(newContribution.amount),
-          description: newContribution.description || "General contribution",
-          date: new Date().toISOString(),
-        });
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Contribution recorded successfully",
-      });
-      
-      setNewContribution({ memberId: "", amount: "", description: "" });
-      setOpenEditDialog(false);
-      fetchMembers();
-    } catch (error) {
-      console.error("Error adding contribution:", error);
-      toast({
-        title: "Error",
-        description: "Failed to record contribution",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const deleteMember = async (memberId: string) => {
+  const handleDeleteMember = async (memberId: string) => {
     if (window.confirm("Are you sure you want to delete this member? All their contributions will also be deleted.")) {
       try {
-        const { error } = await supabase
-          .from('members')
-          .delete()
-          .eq('id', memberId);
-          
-        if (error) throw error;
+        await deleteMember(memberId);
         
         toast({
           title: "Success",
           description: "Member deleted successfully",
         });
         
-        fetchMembers();
+        loadMembersData();
       } catch (error) {
-        console.error("Error deleting member:", error);
         toast({
           title: "Error",
           description: "Failed to delete member",
@@ -227,9 +182,82 @@ const MemberContributions = () => {
       }
     }
   };
+  
+  const startEditing = (member: Member) => {
+    if (member.id) {
+      setEditingMemberId(member.id);
+      setEditedName(member.name);
+    }
+  };
 
-  const calculateTotal = () => {
-    return members.reduce((sum, member) => sum + (member.total_contribution || 0), 0);
+  const saveEditing = async (memberId: string) => {
+    try {
+      await updateMember(memberId, { name: editedName });
+      
+      toast({
+        title: "Success",
+        description: "Member name updated successfully",
+      });
+      
+      setEditingMemberId(null);
+      loadMembersData();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update member name",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const cancelEditing = () => {
+    setEditingMemberId(null);
+  };
+
+  const handleContributionChange = (memberId: string, value: string) => {
+    const amount = parseFloat(value) || 0;
+    setContributions({
+      ...contributions,
+      [memberId]: amount
+    });
+  };
+
+  const saveContributions = async () => {
+    try {
+      for (const [memberId, amount] of Object.entries(contributions)) {
+        if (amount > 0) {
+          await addContribution(memberId, amount, currentWeek);
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "Contributions saved successfully",
+      });
+      
+      // Reset contributions
+      const resetContributions: Record<string, number> = {};
+      for (const member of members) {
+        if (member.id) {
+          resetContributions[member.id] = 0;
+        }
+      }
+      setContributions(resetContributions);
+      
+      // Reload data to get updated totals
+      loadMembersData();
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save contributions",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const calculateTotalContributions = () => {
+    return Object.values(contributions).reduce((sum, amount) => sum + amount, 0);
   };
 
   if (!isAdmin) {
@@ -262,6 +290,13 @@ const MemberContributions = () => {
             </div>
           </div>
           
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-xl font-medium mb-4">Current Week: {formatWeek(currentWeek)}</h2>
+            <p className="text-gray-600 mb-4">
+              Add contributions for each member for this week and click 'Save Contributions' when done.
+            </p>
+          </div>
+          
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-youth-blue" />
@@ -269,12 +304,13 @@ const MemberContributions = () => {
           ) : (
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <Table>
-                <TableCaption>A list of members and their contributions</TableCaption>
+                <TableCaption>Weekly contributions for each member</TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Total Contribution</TableHead>
+                    <TableHead>This Week's Contribution ($)</TableHead>
+                    <TableHead>Previous Total ($)</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -282,28 +318,63 @@ const MemberContributions = () => {
                   {members.length > 0 ? (
                     members.map((member) => (
                       <TableRow key={member.id}>
-                        <TableCell className="font-medium">{member.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {editingMemberId === member.id ? (
+                            <Input 
+                              value={editedName} 
+                              onChange={(e) => setEditedName(e.target.value)} 
+                              className="w-full"
+                            />
+                          ) : (
+                            member.name
+                          )}
+                        </TableCell>
                         <TableCell>{member.email}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            step="0.01"
+                            value={member.id ? contributions[member.id] || "" : ""}
+                            onChange={(e) => member.id && handleContributionChange(member.id, e.target.value)}
+                            className="w-full"
+                          />
+                        </TableCell>
+                        <TableCell>
                           ${member.total_contribution?.toFixed(2) || "0.00"}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedMember(member);
-                                setNewContribution(c => ({ ...c, memberId: member.id }));
-                                setOpenEditDialog(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            {editingMemberId === member.id ? (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => member.id && saveEditing(member.id)}
+                                >
+                                  <Save className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={cancelEditing}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => startEditing(member)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button 
                               variant="destructive" 
                               size="sm"
-                              onClick={() => deleteMember(member.id)}
+                              onClick={() => member.id && handleDeleteMember(member.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -313,7 +384,7 @@ const MemberContributions = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-6 text-gray-500">
                         No members found. Add your first member to get started.
                       </TableCell>
                     </TableRow>
@@ -321,9 +392,18 @@ const MemberContributions = () => {
                 </TableBody>
                 <TableFooter>
                   <TableRow>
-                    <TableCell colSpan={2}>Total</TableCell>
-                    <TableCell className="text-right">${calculateTotal().toFixed(2)}</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell colSpan={2}>Weekly Total</TableCell>
+                    <TableCell>${calculateTotalContributions().toFixed(2)}</TableCell>
+                    <TableCell colSpan={2} className="text-right">
+                      <Button 
+                        onClick={saveContributions}
+                        className="bg-youth-blue hover:bg-youth-blue/90"
+                        disabled={calculateTotalContributions() <= 0}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Contributions
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -368,56 +448,8 @@ const MemberContributions = () => {
                 <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={addMember} className="bg-youth-blue hover:bg-youth-blue/90">
+                <Button onClick={handleAddMember} className="bg-youth-blue hover:bg-youth-blue/90">
                   Add Member
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          
-          {/* Add Contribution Dialog */}
-          <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Contribution</DialogTitle>
-                <DialogDescription>
-                  {selectedMember ? `Add a contribution for ${selectedMember.name}` : "Record a new contribution"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amount" className="text-right">
-                    Amount
-                  </Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={newContribution.amount}
-                    onChange={(e) => setNewContribution({ ...newContribution, amount: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
-                    Purpose
-                  </Label>
-                  <Input
-                    id="description"
-                    placeholder="General contribution"
-                    value={newContribution.description}
-                    onChange={(e) => setNewContribution({ ...newContribution, description: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenEditDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={addContribution} className="bg-youth-blue hover:bg-youth-blue/90">
-                  Save Contribution
                 </Button>
               </DialogFooter>
             </DialogContent>

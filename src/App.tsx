@@ -20,7 +20,8 @@ import Register from "./pages/Register";
 import MemberContributions from "./pages/MemberContributions";
 import ContributionsReport from "./pages/ContributionsReport";
 import AdminEvents from "./pages/AdminEvents";
-import Events from "./pages/Events"; // Add the new Events page import
+import Events from "./pages/Events";
+import MembersList from "./pages/MembersList";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -40,7 +41,7 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/events" element={<Events />} /> {/* Add the new Events route */}
+              <Route path="/events" element={<Events />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route 
                 path="/admin" 
@@ -111,6 +112,14 @@ const App = () => {
                 element={
                   <ProtectedRoute requireAdmin={true}>
                     <AdminEvents />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/members" 
+                element={
+                  <ProtectedRoute requireAdmin={true}>
+                    <MembersList />
                   </ProtectedRoute>
                 } 
               />

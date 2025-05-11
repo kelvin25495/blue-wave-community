@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,15 +60,15 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
-  // For admin routes, strictly check if there's an admin session
+  // For admin routes, check both admin flags
   if (requireAdmin) {
-    // If there's no admin session, redirect to admin login
-    if (!adminSession) {
-      return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
+    // If there's an adminSession or user is admin, allow access
+    if (adminSession || isAdmin) {
+      return <>{children}</>;
     }
     
-    // For admin routes, only allow access with admin session
-    return <>{children}</>;
+    // Otherwise redirect to admin login
+    return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
   }
 
   // For regular protected routes (non-admin)
