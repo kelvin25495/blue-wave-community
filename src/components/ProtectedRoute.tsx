@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,13 +22,16 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   console.log("ProtectedRoute - AdminSession:", adminSession);
 
   useEffect(() => {
+    // Show toast when regular user access is denied
     if (!isLoading && !user && !adminSession && !location.pathname.includes('/admin')) {
       toast({
         title: "Access denied",
         description: "Please login to access this page",
         variant: "destructive",
       });
-    } else if (!isLoading && requireAdmin && !isAdmin && !adminSession) {
+    } 
+    // Show toast when admin access is denied
+    else if (!isLoading && requireAdmin && !isAdmin && !adminSession) {
       toast({
         title: "Access denied",
         description: "You need admin access to view this page",

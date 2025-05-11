@@ -9,9 +9,27 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(dateString: string): string {
   try {
+    // Use date-fns to nicely format the date
     return format(new Date(dateString), "MMM d, yyyy");
   } catch (error) {
     console.error("Invalid date format:", error);
+    return "Invalid date";
+  }
+}
+
+export function formatDateTime(dateString: string, timeString?: string): string {
+  try {
+    // Format date
+    const formattedDate = format(new Date(dateString), "EEE, MMM d, yyyy");
+    
+    // Add time if provided
+    if (timeString) {
+      return `${formattedDate} at ${timeString}`;
+    }
+    
+    return formattedDate;
+  } catch (error) {
+    console.error("Invalid date/time format:", error);
     return "Invalid date";
   }
 }

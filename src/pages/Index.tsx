@@ -1,7 +1,6 @@
 
 import Navbar from '@/components/Navbar';
 import Hero3DSlider from '@/components/Hero3DSlider';
-import EventsSection from '@/components/EventsSection';
 import Footer from '@/components/Footer';
 
 const Index = () => {
@@ -51,8 +50,6 @@ const Index = () => {
             </div>
           </div>
         </section>
-        
-        <EventsSection />
       </main>
       <Footer />
     </div>
