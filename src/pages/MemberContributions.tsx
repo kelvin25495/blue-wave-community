@@ -2,12 +2,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Loader2, Users, ChartBar, Save, X } from "lucide-react";
-import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabaseClient";
 import {
   Table,
@@ -26,7 +26,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { 
   Member, 
@@ -55,10 +54,17 @@ const MemberContributions = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkSession = async () => {
+    console.log("MemberContributions component mounted");
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      console.log("Checking admin session...");
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
+        console.log("No session found, redirecting to login");
         toast({
           title: "Access denied",
           description: "Please login to access this page",
@@ -68,44 +74,88 @@ const MemberContributions = () => {
         return;
       }
       
-      // Check if user is admin (we can use the adminSession instead)
-      const { data: adminData } = await supabase.auth.getSession();
-      if (adminData.session) {
-        setIsAdmin(true);
-        loadMembersData();
+      // Check if user is admin (for debugging purposes)
+      console.log("Session found, checking if user is admin");
+      setIsAdmin(true); // For now, assume they're admin if they have a session
+      
+      // Now that we know the user is logged in, let's ensure the tables exist
+      await ensureTables();
+      
+      // Then load the members data
+      await loadMembersData();
+    } catch (error) {
+      console.error("Error checking session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to verify your session",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const ensureTables = async () => {
+    console.log("Ensuring tables exist...");
+    try {
+      // Check if members table exists
+      const { data: membersData, error: membersError } = await supabase
+        .from('members')
+        .select('id')
+        .limit(1);
+      
+      if (membersError) {
+        console.log("Creating members table...");
+        // Create members table
+        await supabase.rpc('create_members_table');
+        console.log("Members table created");
       } else {
-        toast({
-          title: "Access denied",
-          description: "You need admin access to view this page",
-          variant: "destructive",
-        });
-        navigate("/");
+        console.log("Members table exists");
       }
-    };
-    
-    checkSession();
-  }, [navigate, toast]);
+      
+      // Check if contributions table exists
+      const { data: contribsData, error: contribsError } = await supabase
+        .from('contributions')
+        .select('id')
+        .limit(1);
+      
+      if (contribsError) {
+        console.log("Creating contributions table...");
+        // Create contributions table
+        await supabase.rpc('create_contributions_table');
+        console.log("Contributions table created");
+      } else {
+        console.log("Contributions table exists");
+      }
+    } catch (error) {
+      console.error("Error ensuring tables:", error);
+    }
+  };
 
   const loadMembersData = async () => {
     try {
+      console.log("Loading members data...");
       setIsLoading(true);
       
-      // Create tables if they don't exist
-      await ensureTables();
+      // Get members with their total contributions
+      const { data: membersData, error: membersError } = await supabase
+        .from('members_with_contributions')
+        .select('*');
       
-      // Get members data
-      const membersData = await fetchMembers();
-      setMembers(membersData);
+      if (membersError) {
+        console.error("Error fetching members data:", membersError);
+        throw membersError;
+      }
+      
+      console.log("Members data loaded:", membersData);
+      setMembers(membersData || []);
       
       // Initialize contributions object for the current week
       const initialContributions: Record<string, number> = {};
-      for (const member of membersData) {
+      for (const member of membersData || []) {
         if (member.id) {
           initialContributions[member.id] = 0;
         }
       }
       setContributions(initialContributions);
-
     } catch (error) {
       console.error("Error loading members data:", error);
       toast({
@@ -115,20 +165,6 @@ const MemberContributions = () => {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const ensureTables = async () => {
-    // Check if tables exist, and if not, create them
-    const { error: checkError } = await supabase
-      .from('members')
-      .select('id')
-      .limit(1);
-    
-    if (checkError) {
-      // Table might not exist, let's create it
-      await supabase.rpc('create_members_table');
-      await supabase.rpc('create_contributions_table');
     }
   };
 
@@ -154,6 +190,7 @@ const MemberContributions = () => {
       setOpenAddDialog(false);
       loadMembersData();
     } catch (error) {
+      console.error("Error adding member:", error);
       toast({
         title: "Error",
         description: "Failed to add member",
@@ -174,6 +211,7 @@ const MemberContributions = () => {
         
         loadMembersData();
       } catch (error) {
+        console.error("Error deleting member:", error);
         toast({
           title: "Error",
           description: "Failed to delete member",
@@ -202,6 +240,7 @@ const MemberContributions = () => {
       setEditingMemberId(null);
       loadMembersData();
     } catch (error) {
+      console.error("Error updating member name:", error);
       toast({
         title: "Error",
         description: "Failed to update member name",
@@ -224,6 +263,7 @@ const MemberContributions = () => {
 
   const saveContributions = async () => {
     try {
+      console.log("Saving contributions...");
       for (const [memberId, amount] of Object.entries(contributions)) {
         if (amount > 0) {
           await addContribution(memberId, amount, currentWeek);
@@ -248,6 +288,7 @@ const MemberContributions = () => {
       loadMembersData();
       
     } catch (error) {
+      console.error("Error saving contributions:", error);
       toast({
         title: "Error",
         description: "Failed to save contributions",

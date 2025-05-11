@@ -18,12 +18,25 @@ export interface Contribution {
 }
 
 export const fetchMembers = async (): Promise<Member[]> => {
+  console.log("Fetching members...");
   try {
+    // Try to use the view that includes total contributions
+    const { data: membersWithContributions, error: viewError } = await supabase
+      .from('members_with_contributions')
+      .select('*');
+      
+    if (!viewError && membersWithContributions) {
+      console.log("Fetched members with contributions:", membersWithContributions);
+      return membersWithContributions;
+    }
+    
+    // Fallback to just getting members if the view doesn't exist
     const { data, error } = await supabase
       .from('members')
       .select('*');
       
     if (error) throw error;
+    console.log("Fetched members:", data);
     return data || [];
   } catch (error) {
     console.error("Error fetching members:", error);
