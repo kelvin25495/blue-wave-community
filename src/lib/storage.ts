@@ -9,7 +9,7 @@ export async function ensureStorageBuckets() {
     'photos',
     'avatars',
     'documents',
-    'gallery-images'  // Adding this bucket specifically for photos
+    'gallery-images'
   ];
 
   try {
@@ -46,8 +46,7 @@ export async function ensureStorageBuckets() {
         } else {
           console.log(`Successfully created ${bucketName} bucket`);
           
-          // Update bucket policy to be public without using setPublic
-          // This is handled automatically by the 'public: true' option in createBucket
+          // The bucket is already public from creation options
           console.log(`Bucket ${bucketName} is set to public via bucket creation options`);
         }
       } else {

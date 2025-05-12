@@ -35,31 +35,18 @@ const ContributionsManager = () => {
     loadMembers();
   }, []);
 
-  // Create tables if they don't exist
-  const createTablesIfNeeded = async () => {
-    try {
-      console.log("Checking if members table exists...");
-      const { count, error } = await supabase
-        .from('members')
-        .select('*', { count: 'exact', head: true });
-
-      if (error) {
-        console.log("Creating members and contributions tables...");
-        await supabase.rpc('create_members_table');
-        await supabase.rpc('create_contributions_table');
-      } else {
-        console.log("Tables already exist, found", count, "members");
-      }
-    } catch (error) {
-      console.error("Error checking/creating tables:", error);
-    }
-  };
-
   // Load members data
   const loadMembers = async () => {
     setIsLoading(true);
     try {
-      await createTablesIfNeeded();
+      // First check if tables exist, create them if not
+      try {
+        await supabase.rpc('create_members_table');
+        await supabase.rpc('create_contributions_table');
+        console.log("Members and contributions tables created or already exist");
+      } catch (error) {
+        console.log("Note: Tables might already exist, proceeding to fetch members");
+      }
       
       console.log("Fetching members...");
       const { data, error } = await supabase

@@ -35,11 +35,19 @@ const PhotoCard = ({ photo, onUpdate, isAdmin }: PhotoProps) => {
         
         // Delete the image from storage
         if (photo.image_url) {
-          const imagePath = photo.image_url.split("/").pop();
-          if (imagePath) {
+          // Extract the bucket name and path from the URL
+          const urlParts = photo.image_url.split('/');
+          const bucketIndex = urlParts.findIndex(part => part === 'storage') + 1;
+          
+          if (bucketIndex > 0 && bucketIndex < urlParts.length) {
+            const bucketName = urlParts[bucketIndex]; 
+            const path = urlParts.slice(bucketIndex + 1).join('/');
+            
+            console.log(`Deleting image from bucket: ${bucketName}, path: ${path}`);
+            
             await supabase.storage
-              .from("photos")  // Changed from gallery-images to photos
-              .remove([imagePath]);
+              .from(bucketName)
+              .remove([path]);
           }
         }
         

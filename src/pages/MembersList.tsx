@@ -19,8 +19,8 @@ import {
 interface Profile {
   id: string;
   email: string;
-  name: string;
-  phone: string;
+  name?: string;
+  phone?: string;
 }
 
 const MembersList = () => {
@@ -36,6 +36,7 @@ const MembersList = () => {
 
   const checkAdminAndLoadData = async () => {
     try {
+      console.log("Checking admin session...");
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
@@ -48,6 +49,7 @@ const MembersList = () => {
         return;
       }
       
+      console.log("User is signed in:", data.session.user);
       setIsAdmin(true);
       loadMembersData();
     } catch (error) {
@@ -63,15 +65,37 @@ const MembersList = () => {
   const loadMembersData = async () => {
     try {
       setIsLoading(true);
+      console.log("Loading members data...");
       
-      // Get profiles directly - simpler approach
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, email, name, phone');
+      // Get all auth users
+      const { data: users, error } = await supabase.auth.admin.listUsers();
       
-      if (error) throw error;
-      
-      setMembers(profiles || []);
+      if (error) {
+        console.error("Error fetching users:", error);
+        
+        // Fallback to profiles table
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, email, name, phone');
+        
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+          throw profilesError;
+        }
+        
+        console.log("Fetched profiles:", profiles);
+        setMembers(profiles || []);
+      } else {
+        console.log("Fetched users:", users);
+        const formattedMembers = users.users.map(user => ({
+          id: user.id,
+          email: user.email || 'No email provided',
+          name: user.user_metadata?.name || 'Not provided',
+          phone: user.user_metadata?.phone || 'Not provided'
+        }));
+        
+        setMembers(formattedMembers);
+      }
     } catch (error) {
       console.error("Error loading members data:", error);
       toast({
