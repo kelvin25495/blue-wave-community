@@ -123,12 +123,36 @@ BEGIN
   SELECT json_build_object(
     'id', au.id,
     'email', au.email,
-    'created_at', au.created_at,
-    'last_sign_in_at', au.last_sign_in_at,
-    'full_name', p.full_name
+    'name', p.name,
+    'phone', p.phone
   )
   FROM auth.users au
   LEFT JOIN public.profiles p ON au.id = p.id
   ORDER BY au.created_at DESC;
 END;
 $$;
+
+-- This is an example of how to create or update the profiles table with phone field
+-- You would run this in the Supabase SQL editor
+/*
+-- Create or update profiles table to include phone field
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  name TEXT,
+  email TEXT,
+  phone TEXT,
+  is_admin BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Add phone column if it doesn't exist (this is safe to run multiple times)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT FROM information_schema.columns 
+    WHERE table_name = 'profiles' AND column_name = 'phone'
+  ) THEN
+    ALTER TABLE public.profiles ADD COLUMN phone TEXT;
+  END IF;
+END $$;
+*/

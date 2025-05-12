@@ -15,6 +15,7 @@ import * as z from "zod";
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
+  phone: z.string().min(10, "Please enter a valid phone number"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -32,6 +33,7 @@ const Register = () => {
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
       confirmPassword: "",
     },
@@ -48,14 +50,14 @@ const Register = () => {
         options: {
           data: {
             name: data.name,
+            phone: data.phone,
           }
         }
       });
       
       if (error) throw error;
       
-      // Try to create profile record - this may fail if table doesn't exist
-      // but we'll handle that gracefully
+      // Create profile record - this contains the user's name and phone number
       if (authData.user) {
         try {
           await supabase
@@ -64,10 +66,10 @@ const Register = () => {
               id: authData.user.id,
               name: data.name,
               email: data.email,
+              phone: data.phone,
               is_admin: false, // default to regular user
             });
         } catch (profileError) {
-          // Log the error but don't fail the registration
           console.warn("Could not create profile record:", profileError);
         }
       }
@@ -127,6 +129,20 @@ const Register = () => {
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input placeholder="you@example.com" type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1234567890" type="tel" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

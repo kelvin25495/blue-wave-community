@@ -15,14 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
 
 interface Profile {
   id: string;
   email: string;
-  full_name?: string;
-  created_at: string;
-  last_sign_in_at?: string;
+  name: string;
+  phone: string;
 }
 
 const MembersList = () => {
@@ -62,35 +60,18 @@ const MembersList = () => {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    try {
-      return format(new Date(dateString), "MMM d, yyyy h:mm a");
-    } catch (error) {
-      return "Invalid date";
-    }
-  };
-
   const loadMembersData = async () => {
     try {
       setIsLoading(true);
       
-      // First try to get users from auth.users via a function
-      const { data: authUsers, error: authError } = await supabase.rpc('get_all_users');
+      // Get profiles directly - simpler approach
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, email, name, phone');
       
-      if (authUsers) {
-        setMembers(authUsers);
-      } else {
-        // Fallback to profiles table
-        console.log("Falling back to profiles table");
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*');
-        
-        if (profilesError) throw profilesError;
-        
-        setMembers(profiles || []);
-      }
+      if (error) throw error;
+      
+      setMembers(profiles || []);
     } catch (error) {
       console.error("Error loading members data:", error);
       toast({
@@ -135,25 +116,23 @@ const MembersList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Registered Date</TableHead>
-                    <TableHead>Last Sign In</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone Number</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {members.length > 0 ? (
                     members.map((member) => (
                       <TableRow key={member.id}>
+                        <TableCell className="font-medium">{member.name || "Not provided"}</TableCell>
                         <TableCell>{member.email}</TableCell>
-                        <TableCell>{member.full_name || "Not provided"}</TableCell>
-                        <TableCell>{formatDate(member.created_at)}</TableCell>
-                        <TableCell>{member.last_sign_in_at ? formatDate(member.last_sign_in_at) : "Never"}</TableCell>
+                        <TableCell>{member.phone || "Not provided"}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                      <TableCell colSpan={3} className="text-center py-6 text-gray-500">
                         No registered members found.
                       </TableCell>
                     </TableRow>

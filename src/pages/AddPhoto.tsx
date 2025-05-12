@@ -1,4 +1,3 @@
-
 import { useState, useRef, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -63,9 +62,9 @@ const AddPhoto = () => {
         const fileName = `${uuidv4()}.${fileExt}`;
         const filePath = fileName;
 
-        // Upload to storage
+        // Upload to storage - using 'photos' bucket instead of 'gallery-images'
         const { error: uploadError } = await supabase.storage
-          .from('gallery-images')
+          .from('photos')
           .upload(filePath, file);
 
         if (uploadError) {
@@ -79,7 +78,7 @@ const AddPhoto = () => {
 
         // Get public URL
         const { data: urlData } = supabase.storage
-          .from('gallery-images')
+          .from('photos')
           .getPublicUrl(filePath);
 
         // Add record to database

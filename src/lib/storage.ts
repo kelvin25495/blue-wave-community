@@ -8,7 +8,8 @@ export async function ensureStorageBuckets() {
     'sermons',
     'photos',
     'avatars',
-    'documents'
+    'documents',
+    'gallery-images'  // Adding this bucket specifically for photos
   ];
 
   try {

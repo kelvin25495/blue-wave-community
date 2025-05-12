@@ -11,6 +11,7 @@ import ContributionsManager from "@/components/ContributionsManager";
 
 const MemberContributions = () => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -21,6 +22,7 @@ const MemberContributions = () => {
   const checkSession = async () => {
     try {
       console.log("Checking admin session...");
+      setIsLoading(true);
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
@@ -36,6 +38,7 @@ const MemberContributions = () => {
       
       console.log("Session found, assuming admin access");
       setIsAdmin(true);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error checking session:", error);
       toast({
@@ -43,8 +46,21 @@ const MemberContributions = () => {
         description: "Failed to verify your session",
         variant: "destructive",
       });
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow py-12 bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-youth-blue"></div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return null;

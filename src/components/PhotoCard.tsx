@@ -38,7 +38,7 @@ const PhotoCard = ({ photo, onUpdate, isAdmin }: PhotoProps) => {
           const imagePath = photo.image_url.split("/").pop();
           if (imagePath) {
             await supabase.storage
-              .from("gallery-images")
+              .from("photos")  // Changed from gallery-images to photos
               .remove([imagePath]);
           }
         }

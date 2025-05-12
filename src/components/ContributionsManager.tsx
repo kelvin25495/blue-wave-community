@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ensureStorageBuckets } from "@/lib/storage";
 
 interface Member {
   id?: string;
@@ -28,24 +29,29 @@ const ContributionsManager = () => {
   const [newMember, setNewMember] = useState({ name: "", email: "" });
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Ensure storage buckets on component load
+    ensureStorageBuckets();
+    loadMembers();
+  }, []);
+
   // Create tables if they don't exist
   const createTablesIfNeeded = async () => {
     try {
-      console.log("Checking if tables exist...");
-      const { data, error } = await supabase
+      console.log("Checking if members table exists...");
+      const { count, error } = await supabase
         .from('members')
-        .select('id')
-        .limit(1);
+        .select('*', { count: 'exact', head: true });
 
       if (error) {
-        console.log("Creating members table...");
+        console.log("Creating members and contributions tables...");
         await supabase.rpc('create_members_table');
         await supabase.rpc('create_contributions_table');
       } else {
-        console.log("Tables already exist");
+        console.log("Tables already exist, found", count, "members");
       }
     } catch (error) {
-      console.error("Error checking tables:", error);
+      console.error("Error checking/creating tables:", error);
     }
   };
 
@@ -55,11 +61,17 @@ const ContributionsManager = () => {
     try {
       await createTablesIfNeeded();
       
+      console.log("Fetching members...");
       const { data, error } = await supabase
         .from('members')
         .select('*');
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching members:", error);
+        throw error;
+      }
+      
+      console.log("Fetched members:", data);
       
       // Add contribution field to each member for UI editing
       const membersWithContribution = data?.map(member => ({
@@ -206,10 +218,6 @@ const ContributionsManager = () => {
   const calculateTotal = () => {
     return members.reduce((sum, member) => sum + (member.contribution || 0), 0);
   };
-
-  useEffect(() => {
-    loadMembers();
-  }, []);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
