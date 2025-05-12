@@ -2,11 +2,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, Users } from "lucide-react";
-import Footer from "@/components/Footer";
+import { Loader2, Users, ArrowLeft } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,12 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface Profile {
   id: string;
   email: string;
-  full_name: string;
+  full_name?: string;
   created_at: string;
   last_sign_in_at?: string;
 }
@@ -28,11 +28,16 @@ interface Profile {
 const MembersList = () => {
   const [members, setMembers] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkAdminAndLoadData = async () => {
+    checkAdminAndLoadData();
+  }, []);
+
+  const checkAdminAndLoadData = async () => {
+    try {
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
@@ -45,42 +50,47 @@ const MembersList = () => {
         return;
       }
       
-      // Check if user is admin
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', data.session.user.id)
-        .single();
-        
-      if (!userData?.is_admin) {
-        toast({
-          title: "Access denied",
-          description: "You need admin access to view this page",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-      
+      setIsAdmin(true);
       loadMembersData();
-    };
-    
-    checkAdminAndLoadData();
-  }, [navigate, toast]);
+    } catch (error) {
+      console.error("Error checking session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to verify your session",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM d, yyyy h:mm a");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
 
   const loadMembersData = async () => {
     try {
       setIsLoading(true);
       
-      // Get all users from profiles table
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, created_at, last_sign_in_at')
-        .order('created_at', { ascending: false });
+      // First try to get users from auth.users via a function
+      const { data: authUsers, error: authError } = await supabase.rpc('get_all_users');
       
-      if (error) throw error;
-      
-      setMembers(data || []);
+      if (authUsers) {
+        setMembers(authUsers);
+      } else {
+        // Fallback to profiles table
+        console.log("Falling back to profiles table");
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*');
+        
+        if (profilesError) throw profilesError;
+        
+        setMembers(profiles || []);
+      }
     } catch (error) {
       console.error("Error loading members data:", error);
       toast({
@@ -92,6 +102,10 @@ const MembersList = () => {
       setIsLoading(false);
     }
   };
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -107,6 +121,7 @@ const MembersList = () => {
               onClick={() => navigate("/admin")}
               variant="outline"
             >
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
           </div>
@@ -120,8 +135,8 @@ const MembersList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Registered Date</TableHead>
                     <TableHead>Last Sign In</TableHead>
                   </TableRow>
@@ -130,8 +145,8 @@ const MembersList = () => {
                   {members.length > 0 ? (
                     members.map((member) => (
                       <TableRow key={member.id}>
-                        <TableCell className="font-medium">{member.full_name}</TableCell>
                         <TableCell>{member.email}</TableCell>
+                        <TableCell>{member.full_name || "Not provided"}</TableCell>
                         <TableCell>{formatDate(member.created_at)}</TableCell>
                         <TableCell>{member.last_sign_in_at ? formatDate(member.last_sign_in_at) : "Never"}</TableCell>
                       </TableRow>

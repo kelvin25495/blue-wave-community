@@ -13,11 +13,20 @@ export async function ensureStorageBuckets() {
 
   try {
     console.log("Starting to create storage buckets...");
+    
+    // First check if the user has permission to create buckets
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log("No active session, cannot create buckets");
+      return false;
+    }
+    
     // Get existing buckets
     const { data: existingBuckets, error } = await supabase.storage.listBuckets();
+    
     if (error) {
       console.error("Error listing buckets:", error);
-      throw error;
+      // Try creating anyway in case the error is due to buckets not existing yet
     }
 
     // Create any missing buckets
@@ -35,6 +44,12 @@ export async function ensureStorageBuckets() {
           console.error(`Error creating ${bucketName} bucket:`, createError);
         } else {
           console.log(`Successfully created ${bucketName} bucket`);
+          
+          // Set public bucket policy
+          const { error: policyError } = await supabase.storage.from(bucketName).setPublic();
+          if (policyError) {
+            console.error(`Error setting public policy for ${bucketName}:`, policyError);
+          }
         }
       } else {
         console.log(`Bucket ${bucketName} already exists`);

@@ -27,12 +27,12 @@ BEGIN
   CREATE POLICY "Allow authenticated users to insert members" ON public.members
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
     
-  -- Create a policy that allows authenticated users to update their own records
+  -- Create a policy that allows authenticated users to update
   DROP POLICY IF EXISTS "Allow authenticated users to update members" ON public.members;
   CREATE POLICY "Allow authenticated users to update members" ON public.members
     FOR UPDATE USING (auth.role() = 'authenticated');
     
-  -- Create a policy that allows authenticated users to delete their own records
+  -- Create a policy that allows authenticated users to delete
   DROP POLICY IF EXISTS "Allow authenticated users to delete members" ON public.members;
   CREATE POLICY "Allow authenticated users to delete members" ON public.members
     FOR DELETE USING (auth.role() = 'authenticated');
@@ -46,6 +46,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  -- Check if members table exists first
+  PERFORM create_members_table();
+
   -- Create the contributions table if it doesn't exist
   CREATE TABLE IF NOT EXISTS public.contributions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -69,12 +72,12 @@ BEGIN
   CREATE POLICY "Allow authenticated users to insert contributions" ON public.contributions
     FOR INSERT WITH CHECK (auth.role() = 'authenticated');
     
-  -- Create a policy that allows authenticated users to update their own records
+  -- Create a policy that allows authenticated users to update
   DROP POLICY IF EXISTS "Allow authenticated users to update contributions" ON public.contributions;
   CREATE POLICY "Allow authenticated users to update contributions" ON public.contributions
     FOR UPDATE USING (auth.role() = 'authenticated');
     
-  -- Create a policy that allows authenticated users to delete their own records
+  -- Create a policy that allows authenticated users to delete
   DROP POLICY IF EXISTS "Allow authenticated users to delete contributions" ON public.contributions;
   CREATE POLICY "Allow authenticated users to delete contributions" ON public.contributions
     FOR DELETE USING (auth.role() = 'authenticated');
@@ -106,5 +109,26 @@ BEGIN
       TO_CHAR(date, 'YYYY-MM')
     ORDER BY 
       month;
+END;
+$$;
+
+-- Function to get all users (to be used by admin)
+CREATE OR REPLACE FUNCTION public.get_all_users()
+RETURNS SETOF json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT json_build_object(
+    'id', au.id,
+    'email', au.email,
+    'created_at', au.created_at,
+    'last_sign_in_at', au.last_sign_in_at,
+    'full_name', p.full_name
+  )
+  FROM auth.users au
+  LEFT JOIN public.profiles p ON au.id = p.id
+  ORDER BY au.created_at DESC;
 END;
 $$;
