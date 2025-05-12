@@ -45,11 +45,9 @@ export async function ensureStorageBuckets() {
         } else {
           console.log(`Successfully created ${bucketName} bucket`);
           
-          // Set public bucket policy
-          const { error: policyError } = await supabase.storage.from(bucketName).setPublic();
-          if (policyError) {
-            console.error(`Error setting public policy for ${bucketName}:`, policyError);
-          }
+          // Update bucket policy to be public without using setPublic
+          // This is handled automatically by the 'public: true' option in createBucket
+          console.log(`Bucket ${bucketName} is set to public via bucket creation options`);
         }
       } else {
         console.log(`Bucket ${bucketName} already exists`);
