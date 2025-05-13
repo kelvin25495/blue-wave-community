@@ -1,4 +1,5 @@
-import { useState, useRef, ChangeEvent } from "react";
+
+import { useState, useRef, ChangeEvent, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -8,15 +9,27 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { Upload, Image, ArrowLeft, Loader2, X } from "lucide-react";
 import { v4 as uuidv4 } from 'uuid';
+import { ensureStorageBuckets } from "@/lib/storage";
 
 const AddPhoto = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [bucketsReady, setBucketsReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const prepareBuckets = async () => {
+      const result = await ensureStorageBuckets();
+      console.log("Storage buckets prepared:", result);
+      setBucketsReady(true);
+    };
+    
+    prepareBuckets();
+  }, []);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -62,12 +75,15 @@ const AddPhoto = () => {
         const fileName = `${uuidv4()}.${fileExt}`;
         const filePath = fileName;
 
-        // Upload to storage - using 'photos' bucket instead of 'gallery-images'
-        const { error: uploadError } = await supabase.storage
+        console.log(`Uploading file ${i+1}/${totalFiles}: ${fileName}`);
+        
+        // Upload to storage - using 'photos' bucket
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('photos')
           .upload(filePath, file);
 
         if (uploadError) {
+          console.error("Upload error:", uploadError);
           toast({
             title: `Error uploading ${file.name}`,
             description: uploadError.message,
@@ -76,10 +92,14 @@ const AddPhoto = () => {
           continue;
         }
 
+        console.log("File uploaded successfully:", uploadData);
+
         // Get public URL
         const { data: urlData } = supabase.storage
           .from('photos')
           .getPublicUrl(filePath);
+
+        console.log("Public URL:", urlData.publicUrl);
 
         // Add record to database
         const { error: dbError } = await supabase
@@ -91,6 +111,7 @@ const AddPhoto = () => {
           });
 
         if (dbError) {
+          console.error("Database error:", dbError);
           toast({
             title: `Error saving ${file.name} to database`,
             description: dbError.message,
@@ -208,12 +229,17 @@ const AddPhoto = () => {
                   <Button 
                     onClick={handleUpload} 
                     className="bg-youth-blue hover:bg-youth-blue/90 w-full md:w-auto"
-                    disabled={selectedFiles.length === 0 || isUploading}
+                    disabled={selectedFiles.length === 0 || isUploading || !bucketsReady}
                   >
                     {isUploading ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Uploading...
+                      </>
+                    ) : !bucketsReady ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Preparing...
                       </>
                     ) : (
                       <>

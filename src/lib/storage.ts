@@ -36,6 +36,7 @@ export async function ensureStorageBuckets() {
       
       if (!bucketExists) {
         console.log(`Creating storage bucket: ${bucketName}`);
+        // Make sure buckets are created with public access
         const { error: createError } = await supabase.storage.createBucket(bucketName, {
           public: true,
           fileSizeLimit: 10485760, // 10MB
@@ -46,8 +47,13 @@ export async function ensureStorageBuckets() {
         } else {
           console.log(`Successfully created ${bucketName} bucket`);
           
-          // The bucket is already public from creation options
-          console.log(`Bucket ${bucketName} is set to public via bucket creation options`);
+          // Double check to make sure the bucket is public
+          try {
+            const { data } = supabase.storage.from(bucketName).getPublicUrl('test');
+            console.log(`Bucket ${bucketName} public URL test:`, data);
+          } catch (e) {
+            console.error(`Failed to get public URL for ${bucketName}:`, e);
+          }
         }
       } else {
         console.log(`Bucket ${bucketName} already exists`);

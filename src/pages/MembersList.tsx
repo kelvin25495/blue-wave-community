@@ -26,78 +26,40 @@ interface Profile {
 const MembersList = () => {
   const [members, setMembers] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    checkAdminAndLoadData();
+    loadMembersData();
   }, []);
-
-  const checkAdminAndLoadData = async () => {
-    try {
-      console.log("Checking admin session...");
-      const { data } = await supabase.auth.getSession();
-      
-      if (!data.session) {
-        toast({
-          title: "Access denied",
-          description: "Please login as admin to access this page",
-          variant: "destructive",
-        });
-        navigate("/admin-login");
-        return;
-      }
-      
-      console.log("User is signed in:", data.session.user);
-      setIsAdmin(true);
-      loadMembersData();
-    } catch (error) {
-      console.error("Error checking session:", error);
-      toast({
-        title: "Error",
-        description: "Failed to verify your session",
-        variant: "destructive",
-      });
-    }
-  };
 
   const loadMembersData = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       console.log("Loading members data...");
-      
-      // Get all auth users
-      const { data: users, error } = await supabase.auth.admin.listUsers();
-      
-      if (error) {
-        console.error("Error fetching users:", error);
-        
-        // Fallback to profiles table
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, email, name, phone');
-        
-        if (profilesError) {
-          console.error("Error fetching profiles:", profilesError);
-          throw profilesError;
-        }
-        
+
+      // Fetch from profiles table directly - more reliable than auth admin
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, name, phone');
+
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        setLoadError("Failed to fetch member data from profiles table");
+        toast({
+          title: "Error",
+          description: "Failed to load members data",
+          variant: "destructive",
+        });
+      } else {
         console.log("Fetched profiles:", profiles);
         setMembers(profiles || []);
-      } else {
-        console.log("Fetched users:", users);
-        const formattedMembers = users.users.map(user => ({
-          id: user.id,
-          email: user.email || 'No email provided',
-          name: user.user_metadata?.name || 'Not provided',
-          phone: user.user_metadata?.phone || 'Not provided'
-        }));
-        
-        setMembers(formattedMembers);
       }
     } catch (error) {
       console.error("Error loading members data:", error);
+      setLoadError("An unexpected error occurred");
       toast({
         title: "Error",
         description: "Failed to load members data",
@@ -107,10 +69,6 @@ const MembersList = () => {
       setIsLoading(false);
     }
   };
-
-  if (!isAdmin) {
-    return null;
-  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -134,6 +92,17 @@ const MembersList = () => {
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-youth-blue" />
+            </div>
+          ) : loadError ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <p className="text-red-600 mb-2">{loadError}</p>
+              <Button 
+                onClick={loadMembersData}
+                variant="outline"
+                className="mt-2"
+              >
+                Retry
+              </Button>
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow overflow-hidden">

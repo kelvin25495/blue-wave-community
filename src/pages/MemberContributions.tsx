@@ -5,13 +5,15 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ChartBar, ArrowLeft } from "lucide-react";
+import { ChartBar, ArrowLeft, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import ContributionsManager from "@/components/ContributionsManager";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const MemberContributions = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -23,10 +25,12 @@ const MemberContributions = () => {
     try {
       console.log("Checking admin session...");
       setIsLoading(true);
+      setAuthError(null);
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
         console.log("No session found, redirecting to login");
+        setAuthError("You must be logged in to access this page");
         toast({
           title: "Access denied",
           description: "Please login to access this page",
@@ -38,14 +42,32 @@ const MemberContributions = () => {
       
       console.log("Session found, assuming admin access");
       setIsAdmin(true);
-      setIsLoading(false);
+
+      // Check if contributions table exists
+      try {
+        console.log("Checking if tables exist");
+        await supabase.rpc('create_members_table').catch(() => {
+          console.log("RPC not available or already exists");
+        });
+        
+        await supabase.rpc('create_contributions_table').catch(() => {
+          console.log("RPC not available or already exists");
+        });
+        
+        console.log("Tables checked");
+      } catch (error) {
+        console.log("Error checking tables, will proceed anyway:", error);
+      }
+      
     } catch (error) {
       console.error("Error checking session:", error);
+      setAuthError("Failed to verify your session");
       toast({
         title: "Error",
         description: "Failed to verify your session",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -56,6 +78,29 @@ const MemberContributions = () => {
         <Navbar />
         <main className="flex-grow py-12 bg-gray-50 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-youth-blue"></div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow py-12 bg-gray-50 flex items-center justify-center">
+          <div className="container mx-auto px-4 max-w-md">
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+            <Button 
+              onClick={() => navigate("/login")} 
+              className="w-full bg-youth-blue hover:bg-youth-blue/90"
+            >
+              Go to Login
+            </Button>
+          </div>
         </main>
         <Footer />
       </div>

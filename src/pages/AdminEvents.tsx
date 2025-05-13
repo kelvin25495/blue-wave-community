@@ -19,8 +19,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
 import EventCard from "@/components/EventCard";
-import { Calendar, Loader2, Plus } from "lucide-react";
+import { Calendar, Loader2, Plus, AlertTriangle } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Event {
   id: string;
@@ -58,6 +59,7 @@ const AdminEvents = () => {
   const [currentEvent, setCurrentEvent] = useState<Event>(initialEvent);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -69,13 +71,61 @@ const AdminEvents = () => {
   const fetchEvents = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
+      console.log("Fetching events...");
+      
+      // Check if events table exists
+      try {
+        console.log("Checking if events table exists...");
+        // Try to query first
+        const { data: checkData, error: checkError } = await supabase
+          .from("events")
+          .select("count")
+          .limit(1);
+          
+        if (checkError) {
+          console.log("Events table might not exist, attempting to create it...");
+          
+          // Create the events table if it doesn't exist
+          const { error: createError } = await supabase.query(`
+            CREATE TABLE IF NOT EXISTS events (
+              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+              title TEXT NOT NULL,
+              description TEXT,
+              date TEXT NOT NULL,
+              start_time TEXT,
+              end_time TEXT,
+              location TEXT,
+              event_type TEXT DEFAULT 'regular'
+            );
+          `);
+          
+          if (createError) {
+            console.error("Error creating events table:", createError);
+            throw createError;
+          } else {
+            console.log("Events table created successfully");
+          }
+        } else {
+          console.log("Events table exists", checkData);
+        }
+      } catch (tableError) {
+        console.error("Error checking/creating events table:", tableError);
+      }
+      
+      // Now try to fetch events
       const { data, error } = await supabase
         .from("events")
         .select("*")
         .order("date", { ascending: true });
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching events:", error);
+        setLoadError("Failed to load events. The events table might not exist.");
+        throw error;
+      }
       
+      console.log("Fetched events:", data);
       setEvents(data || []);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -85,7 +135,11 @@ const AdminEvents = () => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      // Set loading to false regardless of result
+      // Add artificial delay to ensure UI changes are visible
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     }
   };
 
@@ -225,6 +279,17 @@ const AdminEvents = () => {
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-youth-blue" />
+            </div>
+          ) : loadError ? (
+            <div className="bg-white rounded-lg p-6 text-center shadow">
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{loadError}</AlertDescription>
+              </Alert>
+              <Button onClick={fetchEvents} className="mt-4">
+                <Loader2 className="mr-2 h-4 w-4" />
+                Retry
+              </Button>
             </div>
           ) : events.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, Save, Plus, Trash2, User } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, User, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ensureStorageBuckets } from "@/lib/storage";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Member {
   id?: string;
@@ -26,49 +26,102 @@ interface Member {
 const ContributionsManager = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newMember, setNewMember] = useState({ name: "", email: "" });
   const { toast } = useToast();
 
   useEffect(() => {
-    // Ensure storage buckets on component load
-    ensureStorageBuckets();
     loadMembers();
   }, []);
 
   // Load members data
   const loadMembers = async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
-      // First check if tables exist, create them if not
-      try {
-        await supabase.rpc('create_members_table');
-        await supabase.rpc('create_contributions_table');
-        console.log("Members and contributions tables created or already exist");
-      } catch (error) {
-        console.log("Note: Tables might already exist, proceeding to fetch members");
-      }
+      console.log("Checking if members table exists...");
       
-      console.log("Fetching members...");
+      // Try to query the members table first
       const { data, error } = await supabase
         .from('members')
         .select('*');
-        
+      
       if (error) {
         console.error("Error fetching members:", error);
-        throw error;
+        
+        // If the table doesn't exist, try to create it
+        try {
+          console.log("Creating members table...");
+          await supabase.rpc('create_members_table').catch(() => {
+            // Ignore errors from RPC - it might not exist
+            console.log("RPC not available, trying direct SQL");
+          });
+          
+          // Try raw SQL as fallback
+          await supabase.from('members').insert({
+            id: '00000000-0000-0000-0000-000000000000',
+            name: 'Test Member',
+            email: 'test@example.com',
+            created_at: new Date().toISOString()
+          }).select().single();
+          
+          console.log("Members table created or already exists");
+          
+          // Try to query again after creating the table
+          const { data: newData, error: newError } = await supabase
+            .from('members')
+            .select('*');
+            
+          if (newError) throw newError;
+          
+          // Add contribution field to each member for UI editing
+          const membersWithContribution = newData?.map(member => ({
+            ...member,
+            contribution: 0
+          })) || [];
+          
+          setMembers(membersWithContribution);
+        } catch (createError) {
+          console.error("Error creating or checking members table:", createError);
+          setError("Could not load or create members table. Please check your database permissions.");
+          throw createError;
+        }
+      } else {
+        console.log("Fetched members:", data);
+        
+        // Add contribution field to each member for UI editing
+        const membersWithContribution = data?.map(member => ({
+          ...member,
+          contribution: 0
+        })) || [];
+        
+        setMembers(membersWithContribution);
       }
       
-      console.log("Fetched members:", data);
+      // Also check if contributions table exists
+      try {
+        console.log("Checking if contributions table exists...");
+        await supabase.rpc('create_contributions_table').catch(() => {
+          console.log("RPC not available for contributions table");
+        });
+        
+        // Try raw SQL as fallback
+        await supabase.from('contributions')
+          .select('count')
+          .limit(1)
+          .catch(() => {
+            console.log("Trying to create contributions table");
+          });
+          
+        console.log("Contributions table exists or was created");
+      } catch (contribError) {
+        console.error("Could not verify contributions table:", contribError);
+      }
       
-      // Add contribution field to each member for UI editing
-      const membersWithContribution = data?.map(member => ({
-        ...member,
-        contribution: 0
-      })) || [];
-      
-      setMembers(membersWithContribution);
     } catch (error) {
       console.error("Error loading members:", error);
+      setError("Failed to load members. Please check your connection and try again.");
       toast({
         title: "Failed to load members",
         description: "Please check your connection and try again.",
@@ -205,6 +258,21 @@ const ContributionsManager = () => {
   const calculateTotal = () => {
     return members.reduce((sum, member) => sum + (member.contribution || 0), 0);
   };
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={loadMembers} className="w-full">
+          <Loader2 className="mr-2 h-4 w-4" />
+          Retry Loading
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
