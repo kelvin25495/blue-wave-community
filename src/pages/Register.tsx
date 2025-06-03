@@ -43,6 +43,8 @@ const Register = () => {
     setIsLoading(true);
     
     try {
+      console.log("Attempting registration with email:", data.email);
+      
       // Register with Supabase auth
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
@@ -55,12 +57,17 @@ const Register = () => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Registration error:", error);
+        throw error;
+      }
+      
+      console.log("Registration successful for user:", authData.user?.email);
       
       // Create profile record - this contains the user's name and phone number
       if (authData.user) {
         try {
-          await supabase
+          const { error: profileError } = await supabase
             .from("profiles")
             .insert({
               id: authData.user.id,
@@ -69,6 +76,10 @@ const Register = () => {
               phone: data.phone,
               is_admin: false, // default to regular user
             });
+            
+          if (profileError) {
+            console.warn("Could not create profile record:", profileError);
+          }
         } catch (profileError) {
           console.warn("Could not create profile record:", profileError);
         }
@@ -82,9 +93,20 @@ const Register = () => {
       navigate("/login");
     } catch (error: any) {
       console.error("Registration error:", error);
+      
+      let errorMessage = "Could not create your account";
+      
+      if (error.message?.includes("fetch")) {
+        errorMessage = "Connection failed. Please check your internet connection and try again.";
+      } else if (error.message?.includes("already registered")) {
+        errorMessage = "An account with this email already exists. Please try logging in instead.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Registration failed",
-        description: error.message || "Could not create your account",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

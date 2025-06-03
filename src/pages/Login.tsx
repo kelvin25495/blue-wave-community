@@ -34,18 +34,30 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      console.log("Attempting login with email:", data.email);
+      
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
       
-      // Track login session
-      await supabase.from("login_sessions").insert({
-        user_id: authData.user?.id,
-        login_time: new Date().toISOString(),
-      });
+      console.log("Login successful for user:", authData.user?.email);
+      
+      // Track login session - make this optional in case table doesn't exist
+      try {
+        await supabase.from("login_sessions").insert({
+          user_id: authData.user?.id,
+          login_time: new Date().toISOString(),
+        });
+      } catch (sessionError) {
+        console.warn("Could not track login session:", sessionError);
+        // Don't fail the login if we can't track the session
+      }
       
       toast({
         title: "Login successful",
@@ -55,9 +67,20 @@ const Login = () => {
       navigate("/");
     } catch (error: any) {
       console.error("Login error:", error);
+      
+      let errorMessage = "Invalid email or password";
+      
+      if (error.message?.includes("fetch")) {
+        errorMessage = "Connection failed. Please check your internet connection and try again.";
+      } else if (error.message?.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please check your credentials.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Login failed",
-        description: error.message || "Invalid email or password",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
