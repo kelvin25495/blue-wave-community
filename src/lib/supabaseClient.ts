@@ -14,8 +14,34 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing Supabase URL or anon key");
 }
 
-// Test if the URL is reachable
-console.log("Initializing Supabase client...");
+// Test URL accessibility
+const testSupabaseConnection = async () => {
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+      method: 'HEAD',
+      headers: {
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+    });
+    
+    console.log("Supabase connection test response status:", response.status);
+    
+    if (!response.ok) {
+      console.error("Supabase connection test failed with status:", response.status);
+      return false;
+    }
+    
+    console.log("Supabase connection test successful");
+    return true;
+  } catch (error) {
+    console.error("Supabase connection test failed:", error);
+    return false;
+  }
+};
+
+// Test connection on initialization
+testSupabaseConnection();
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -30,13 +56,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Test the connection
-supabase.auth.getSession().then(({ data, error }) => {
-  if (error) {
-    console.error("Supabase connection test failed:", error);
-  } else {
-    console.log("Supabase connection test successful");
-  }
-}).catch((err) => {
-  console.error("Failed to test Supabase connection:", err);
-});
+// Helper function to check if we can reach Supabase
+export const checkSupabaseConnection = async () => {
+  return await testSupabaseConnection();
+};

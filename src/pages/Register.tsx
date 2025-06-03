@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
-import { Church, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { Church, Loader2, AlertCircle } from "lucide-react";
+import { supabase, checkSupabaseConnection } from "@/lib/supabaseClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -25,6 +25,7 @@ const formSchema = z.object({
 
 const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -41,8 +42,18 @@ const Register = () => {
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+    setConnectionError(false);
     
     try {
+      console.log("Testing Supabase connection before registration...");
+      
+      // First check if we can reach Supabase
+      const canConnect = await checkSupabaseConnection();
+      if (!canConnect) {
+        setConnectionError(true);
+        throw new Error("Cannot connect to Supabase. Please check your internet connection and try again.");
+      }
+      
       console.log("Attempting registration with email:", data.email);
       
       // Register with Supabase auth
@@ -96,7 +107,8 @@ const Register = () => {
       
       let errorMessage = "Could not create your account";
       
-      if (error.message?.includes("fetch")) {
+      if (error.message?.includes("fetch") || error.message?.includes("connect")) {
+        setConnectionError(true);
         errorMessage = "Connection failed. Please check your internet connection and try again.";
       } else if (error.message?.includes("already registered")) {
         errorMessage = "An account with this email already exists. Please try logging in instead.";
@@ -127,6 +139,15 @@ const Register = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {connectionError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Unable to connect to the server. Please check your internet connection and try again.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
