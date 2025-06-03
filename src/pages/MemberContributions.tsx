@@ -46,13 +46,15 @@ const MemberContributions = () => {
       // Check if contributions table exists
       try {
         console.log("Checking if tables exist");
-        await supabase.rpc('create_members_table').catch(() => {
-          console.log("RPC not available or already exists");
-        });
+        const { error: membersRpcError } = await supabase.rpc('create_members_table');
+        if (membersRpcError) {
+          console.log("Members RPC not available or already exists:", membersRpcError);
+        }
         
-        await supabase.rpc('create_contributions_table').catch(() => {
-          console.log("RPC not available or already exists");
-        });
+        const { error: contribRpcError } = await supabase.rpc('create_contributions_table');
+        if (contribRpcError) {
+          console.log("Contributions RPC not available or already exists:", contribRpcError);
+        }
         
         console.log("Tables checked");
       } catch (error) {

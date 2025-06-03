@@ -112,6 +112,50 @@ BEGIN
 END;
 $$;
 
+-- Function to create events table if it doesn't exist
+CREATE OR REPLACE FUNCTION public.create_events_table()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Create the events table if it doesn't exist
+  CREATE TABLE IF NOT EXISTS public.events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    description TEXT,
+    date TEXT NOT NULL,
+    start_time TEXT,
+    end_time TEXT,
+    location TEXT,
+    event_type TEXT DEFAULT 'regular'
+  );
+  
+  -- Set up RLS policies
+  ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+  
+  -- Create a policy that allows authenticated users to select
+  DROP POLICY IF EXISTS "Allow authenticated users to view events" ON public.events;
+  CREATE POLICY "Allow authenticated users to view events" ON public.events
+    FOR SELECT USING (auth.role() = 'authenticated');
+    
+  -- Create a policy that allows authenticated users to insert
+  DROP POLICY IF EXISTS "Allow authenticated users to insert events" ON public.events;
+  CREATE POLICY "Allow authenticated users to insert events" ON public.events
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+    
+  -- Create a policy that allows authenticated users to update
+  DROP POLICY IF EXISTS "Allow authenticated users to update events" ON public.events;
+  CREATE POLICY "Allow authenticated users to update events" ON public.events
+    FOR UPDATE USING (auth.role() = 'authenticated');
+    
+  -- Create a policy that allows authenticated users to delete
+  DROP POLICY IF EXISTS "Allow authenticated users to delete events" ON public.events;
+  CREATE POLICY "Allow authenticated users to delete events" ON public.events
+    FOR DELETE USING (auth.role() = 'authenticated');
+END;
+$$;
+
 -- Function to get all users (to be used by admin)
 CREATE OR REPLACE FUNCTION public.get_all_users()
 RETURNS SETOF json
@@ -131,28 +175,3 @@ BEGIN
   ORDER BY au.created_at DESC;
 END;
 $$;
-
--- This is an example of how to create or update the profiles table with phone field
--- You would run this in the Supabase SQL editor
-/*
--- Create or update profiles table to include phone field
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-  name TEXT,
-  email TEXT,
-  phone TEXT,
-  is_admin BOOLEAN DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-
--- Add phone column if it doesn't exist (this is safe to run multiple times)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT FROM information_schema.columns 
-    WHERE table_name = 'profiles' AND column_name = 'phone'
-  ) THEN
-    ALTER TABLE public.profiles ADD COLUMN phone TEXT;
-  END IF;
-END $$;
-*/

@@ -40,7 +40,7 @@ const ContributionsManager = () => {
     setError(null);
     
     try {
-      console.log("Checking if members table exists...");
+      console.log("Loading members...");
       
       // Try to query the members table first
       const { data, error } = await supabase
@@ -50,30 +50,23 @@ const ContributionsManager = () => {
       if (error) {
         console.error("Error fetching members:", error);
         
-        // If the table doesn't exist, try to create it
+        // If the table doesn't exist, try to create it using RPC
         try {
           console.log("Creating members table...");
-          await supabase.rpc('create_members_table').catch(() => {
-            // Ignore errors from RPC - it might not exist
-            console.log("RPC not available, trying direct SQL");
-          });
+          const { error: rpcError } = await supabase.rpc('create_members_table');
           
-          // Try raw SQL as fallback
-          await supabase.from('members').insert({
-            id: '00000000-0000-0000-0000-000000000000',
-            name: 'Test Member',
-            email: 'test@example.com',
-            created_at: new Date().toISOString()
-          }).select().single();
-          
-          console.log("Members table created or already exists");
+          if (rpcError) {
+            console.log("RPC failed, table might already exist:", rpcError);
+          }
           
           // Try to query again after creating the table
           const { data: newData, error: newError } = await supabase
             .from('members')
             .select('*');
             
-          if (newError) throw newError;
+          if (newError) {
+            throw new Error("Could not access members table after creation attempt");
+          }
           
           // Add contribution field to each member for UI editing
           const membersWithContribution = newData?.map(member => ({
@@ -102,19 +95,23 @@ const ContributionsManager = () => {
       // Also check if contributions table exists
       try {
         console.log("Checking if contributions table exists...");
-        await supabase.rpc('create_contributions_table').catch(() => {
-          console.log("RPC not available for contributions table");
-        });
+        const { error: contribRpcError } = await supabase.rpc('create_contributions_table');
         
-        // Try raw SQL as fallback
-        await supabase.from('contributions')
+        if (contribRpcError) {
+          console.log("Contributions RPC failed, table might already exist:", contribRpcError);
+        }
+        
+        // Test contributions table access
+        const { error: contribTestError } = await supabase
+          .from('contributions')
           .select('count')
-          .limit(1)
-          .catch(() => {
-            console.log("Trying to create contributions table");
-          });
+          .limit(1);
           
-        console.log("Contributions table exists or was created");
+        if (contribTestError) {
+          console.log("Could not access contributions table:", contribTestError);
+        } else {
+          console.log("Contributions table is accessible");
+        }
       } catch (contribError) {
         console.error("Could not verify contributions table:", contribError);
       }

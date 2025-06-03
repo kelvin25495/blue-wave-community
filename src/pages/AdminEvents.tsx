@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -74,46 +73,7 @@ const AdminEvents = () => {
       setLoadError(null);
       console.log("Fetching events...");
       
-      // Check if events table exists
-      try {
-        console.log("Checking if events table exists...");
-        // Try to query first
-        const { data: checkData, error: checkError } = await supabase
-          .from("events")
-          .select("count")
-          .limit(1);
-          
-        if (checkError) {
-          console.log("Events table might not exist, attempting to create it...");
-          
-          // Create the events table if it doesn't exist
-          const { error: createError } = await supabase.query(`
-            CREATE TABLE IF NOT EXISTS events (
-              id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-              title TEXT NOT NULL,
-              description TEXT,
-              date TEXT NOT NULL,
-              start_time TEXT,
-              end_time TEXT,
-              location TEXT,
-              event_type TEXT DEFAULT 'regular'
-            );
-          `);
-          
-          if (createError) {
-            console.error("Error creating events table:", createError);
-            throw createError;
-          } else {
-            console.log("Events table created successfully");
-          }
-        } else {
-          console.log("Events table exists", checkData);
-        }
-      } catch (tableError) {
-        console.error("Error checking/creating events table:", tableError);
-      }
-      
-      // Now try to fetch events
+      // Try to query the events table first
       const { data, error } = await supabase
         .from("events")
         .select("*")
@@ -121,25 +81,49 @@ const AdminEvents = () => {
         
       if (error) {
         console.error("Error fetching events:", error);
-        setLoadError("Failed to load events. The events table might not exist.");
-        throw error;
+        
+        // If table doesn't exist, try to create it
+        try {
+          console.log("Events table might not exist, trying to create it...");
+          
+          // Use proper SQL execution through Supabase RPC
+          const { error: createError } = await supabase.rpc('create_events_table');
+          
+          if (createError) {
+            console.log("RPC failed, table might already exist:", createError);
+          }
+          
+          // Try to fetch again
+          const { data: newData, error: newError } = await supabase
+            .from("events")
+            .select("*")
+            .order("date", { ascending: true });
+            
+          if (newError) {
+            throw new Error("Could not access events table after creation attempt");
+          }
+          
+          console.log("Fetched events after table creation:", newData);
+          setEvents(newData || []);
+        } catch (createError) {
+          console.error("Error creating events table:", createError);
+          setLoadError("Failed to load events. The events table might not exist or could not be created.");
+          throw createError;
+        }
+      } else {
+        console.log("Fetched events:", data);
+        setEvents(data || []);
       }
-      
-      console.log("Fetched events:", data);
-      setEvents(data || []);
     } catch (error) {
       console.error("Error fetching events:", error);
+      setLoadError("Failed to load events data");
       toast({
         title: "Error",
         description: "Failed to load events data",
         variant: "destructive",
       });
     } finally {
-      // Set loading to false regardless of result
-      // Add artificial delay to ensure UI changes are visible
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 500);
+      setIsLoading(false);
     }
   };
 
